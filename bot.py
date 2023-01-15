@@ -155,14 +155,17 @@ async def on_message(message):
         # Play the audio
         voice_client.play(audio)
         # Wait for the audio to finish playing
-        while voice_client.is_playing():
+        while (voice_client is not None) and voice_client.is_playing():
             await asyncio.sleep(1)
         # Disconnect from the voice channel
-        if voice_client.is_playing() == False or voice_client.is_connected():
+        if (voice_client is not None) and (voice_client.is_playing() == False or voice_client.is_connected()):
             await voice_client.disconnect()
             voice_client = None
         
     elif message.content == "!stop":
+        if voice_client is None:
+            await message.channel.send('I am not playing a song.')
+            return
         # Stop the audio and disconnect from the voice channel
         if voice_client:
             voice_client.stop()
@@ -170,7 +173,10 @@ async def on_message(message):
             voice_client = None
             
     if (voice_client is None) and (filename is not None) and os.path.exists(filename):
-        os.remove(filename)
+        try:
+            os.remove(filename)
+        except(PermissionError):
+            return
         
 @client.event
 async def on_disconnect():
@@ -196,14 +202,15 @@ async def on_voice_state_update(member, before, after):
         if filename is not None and os.path.exists(filename):
             os.remove(filename)
     # If the member stopped playing the audio or left the voice channel
-    if (member == client.user and (not after.channel)) or (before.channel and before.channel.id == after.channel.id):
-        if voice_client:
-            # Stop the audio
-            voice_client.stop()
-            # Disconnect from the voice channel
-            await voice_client.disconnect()
-        if filename is not None and os.path.exists(filename):
-            os.remove(filename)
+    if (before.channel is not None) and (after.channel is not None):
+        if (member == client.user and (not after.channel)) or (before.channel and before.channel.id == after.channel.id):
+            if voice_client:
+                # Stop the audio
+                voice_client.stop()
+                # Disconnect from the voice channel
+                await voice_client.disconnect()
+            if filename is not None and os.path.exists(filename):
+                os.remove(filename)
     if member == client.user:
         if before.channel is not None and after.channel is None:
             voice_client = None
