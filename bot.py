@@ -129,7 +129,7 @@ async def on_message(message):
             await message.channel.send('https://tenor.com/view/baby-toddler-laughing-laugh-toppling-gif-23850035')
     if message.content.startswith("!play"):
         if voice_client is not None and voice_client.is_connected():
-            await message.channel.send('I am already playing a song. Please use the `!stop` command to stop the current song.')
+            await message.channel.send(f"I am already playing a song in the voice channel \"{voice_client.channel}\". Please use the `!stop` command to stop the current song.")
             return
         if message.author.voice is None:
             await message.channel.send('You are not in a voice channel. Please join a voice channel and try again.')
@@ -147,7 +147,7 @@ async def on_message(message):
         video = pytube.YouTube(f"https://www.youtube.com/watch?v={video_id}").streams.filter(only_audio=True).first()
         video.download(".")
         filename = video.default_filename
-        await message.channel.send(f"Playing `{filename[0:-4]}`")
+        await message.channel.send(f"Playing `{filename[0:-4]}` in voice channel \"{voice_client.channel}\"")
         
         # Create a discord.FFmpegPCMAudio object to play the audio
         audio = discord.FFmpegPCMAudio(f"{filename}")
