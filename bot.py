@@ -6,6 +6,7 @@ import openai
 import random
 import googleapiclient.discovery
 import pytube
+import time
 
 #region Constants
 
@@ -29,6 +30,7 @@ filename = None
 # To be able to delete the music file when the bot is closed
 def delete_file_on_exit():
     if os.path.exists(filename):
+        time.sleep(1)
         os.remove(filename)
 
 atexit.register(delete_file_on_exit)
@@ -174,6 +176,7 @@ async def on_message(message):
             
     if (voice_client is None) and (filename is not None) and os.path.exists(filename):
         try:
+            time.sleep(1)
             os.remove(filename)
         except(PermissionError):
             return
@@ -185,6 +188,7 @@ async def on_disconnect():
         # Check if the file exists
         if os.path.exists(filename):
             # Delete the file
+            time.sleep(1)
             os.remove(filename)
     except Exception as e:
         # Print an error message if the file couldn't be deleted
@@ -200,6 +204,7 @@ async def on_voice_state_update(member, before, after):
             # Disconnect from the voice channel
             await before.channel.voice_client.disconnect()
         if filename is not None and os.path.exists(filename):
+            time.sleep(1)
             os.remove(filename)
     # If the member stopped playing the audio or left the voice channel
     if (before.channel is not None) and (after.channel is not None):
@@ -210,12 +215,14 @@ async def on_voice_state_update(member, before, after):
                 # Disconnect from the voice channel
                 await voice_client.disconnect()
             if filename is not None and os.path.exists(filename):
+                time.sleep(1)
                 os.remove(filename)
     if member == client.user:
         if before.channel is not None and after.channel is None:
             voice_client = None
             # The bot has left the voice channel, delete the file
             if os.path.exists(filename):
+                time.sleep(1)
                 os.remove(filename)
 
 @client.event
@@ -229,6 +236,7 @@ async def on_stop():
     global filename
     # Delete the song file if it exists
     if os.path.exists(filename):
+        time.sleep(1)
         os.remove(filename)
         
 @client.event
