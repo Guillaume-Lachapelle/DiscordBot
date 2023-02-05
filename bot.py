@@ -139,7 +139,12 @@ async def on_message(message):
         # Get the search query from the message content
         response = get_youtube_song(message, content[6:-1])
         # Get the first video from the search results
-        video_id = response["items"][0]["id"]["videoId"]
+        if response["items"]:
+            video_id = response["items"][0]["id"]["videoId"]
+        else:
+            print("No results found")
+            await message.channel.send("Could not find a video with that name. Please try again.")
+            return
         # Get the voice channel the user is in
         voice_channel = message.author.voice.channel
         # Connect to the voice channel\
