@@ -7,6 +7,7 @@ import random
 import googleapiclient.discovery
 import pytube
 import time
+import stocks
 
 #region Constants
 
@@ -129,6 +130,24 @@ async def on_message(message):
             await message.channel.send('https://tenor.com/view/lmao-dead-weak-lol-lmfao-gif-16296952')
         if choice == 3:
             await message.channel.send('https://tenor.com/view/baby-toddler-laughing-laugh-toppling-gif-23850035')
+    if ('!stock-ticker' in content) and 'http' not in content:
+        try:
+            ticker = await stocks.find_ticker(content[14:-1])
+            await message.channel.send(ticker)
+        except:
+            await message.channel.send('Could not find that stock. Please try again.')
+    if ('!stock-info' in content) and 'http' not in content:
+        try:
+            await stocks.generate_data(content[12:-1])
+        except Exception as e:
+            print(e)
+            await message.channel.send('Could not execute command.')
+        if os.path.exists('stocks.csv'):
+            with open('stocks.csv', 'rb') as f:
+                file = discord.File(f)
+                await message.channel.send(file=file)
+        if(os.path.exists('stocks.csv')):
+            os.remove('stocks.csv')
     if message.content.startswith("!play"):
         if voice_client is not None and voice_client.is_connected():
             await message.channel.send(f"I am already playing a song in the voice channel \"{voice_client.channel}\". Please use the `!stop` command to stop the current song.")
