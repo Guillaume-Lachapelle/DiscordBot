@@ -92,6 +92,8 @@ def get_commands():
     `haha` or `lmao` - I will react with a laughing GIF\n\
     `!question` - Ask any question after this command and I will try to answer it\n\
     `!generate-image` - I will generate an image based on your prompt\n\
+    `!stock-ticker` - I will return the ticker symbol of the stock you request\n\
+    `!stock-info` - I will return the stock information of the stock you request\n\
     `!play` - I will play the song you request (It may help to put the title inside "" quotations)\n\
     `!stop` - I will stop playing the song\n\
     I will also make sure to greet you when you join the server!'
