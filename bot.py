@@ -8,15 +8,21 @@ import googleapiclient.discovery
 import pytube
 import time
 import stocks
+from dotenv import load_dotenv
 
 #region Constants
 
 # Bot's token
-token = '{you discord bot token}'
+# Load environment variables from .env file
+load_dotenv()
 
-openai.api_key = "{your openai api key}"
+# Bot's token
+token = os.getenv('DISCORD_TOKEN')
 
-YOUTUBE_API_KEY = '{your youtube api key}'
+# Currently expired. Openai free trial is over...
+openai.api_key = os.getenv('OPENAI_API_KEY')
+
+YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
 
 client = discord.Client(intents=discord.Intents.all())
 
@@ -247,7 +253,7 @@ async def on_voice_state_update(member, before, after):
         if before.channel is not None and after.channel is None:
             voice_client = None
             # The bot has left the voice channel, delete the file
-            if os.path.exists(filename):
+            if filename is not None and os.path.exists(filename):
                 time.sleep(1)
                 os.remove(filename)
 
