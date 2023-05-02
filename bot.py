@@ -178,7 +178,7 @@ async def on_message(message):
         if voice_client is None or voice_client.is_connected() == False:
             voice_client = await voice_channel.connect()
         # Use pytube to download the audio from the YouTube video
-        video = pytube.YouTube(f"https://www.youtube.com/watch?v={video_id}").streams.filter(only_audio=True).first()
+        video = pytube.YouTube(f"https://www.youtube.com/watch?v={video_id}", use_oauth=True, allow_oauth_cache=True).streams.filter(only_audio=True).first()
         video.download(".")
         filename = video.default_filename
         await message.channel.send(f"Playing `{filename[0:-4]}` in voice channel \"{voice_client.channel}\"")
