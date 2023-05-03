@@ -15,5 +15,7 @@ async def generate_data(my_symbol):
 
 async def find_ticker(my_string):
     ticker = ts.get_symbol_search(my_string)
-    return ticker
+    df = ticker[0]
+    result = df.iloc[0]['1. symbol']
+    return result
     

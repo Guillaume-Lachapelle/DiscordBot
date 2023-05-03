@@ -123,11 +123,11 @@ async def on_message(message):
         await message.channel.send('Hello there! How can I help you? Type `!help` to see a list of commands.')
     if content.startswith('!question'):
         await message.channel.send('Generating response... Please wait...')
-        response = generate_response(content[10:-1])
+        response = generate_response(content[10:])
         await message.channel.send(response)
     if content.startswith('!generate-image'):
         await message.channel.send("Generating image... Please wait...")
-        response = generate_image(content[16:-1])
+        response = generate_image(content[16:])
         await message.channel.send(response)
     if ('haha' in content or 'lmao' in content) and 'http' not in content:
         my_list_laughing = [1,2,3]
@@ -140,13 +140,13 @@ async def on_message(message):
             await message.channel.send('https://tenor.com/view/baby-toddler-laughing-laugh-toppling-gif-23850035')
     if ('!stock-ticker' in content) and 'http' not in content:
         try:
-            ticker = await stocks.find_ticker(content[14:-1])
+            ticker = await stocks.find_ticker(content[14:])
             await message.channel.send(ticker)
         except:
             await message.channel.send('Could not find that stock. Please try again.')
     if ('!stock-info' in content) and 'http' not in content:
         try:
-            await stocks.generate_data(content[12:-1])
+            await stocks.generate_data(content[12:])
         except Exception as e:
             print(e)
             await message.channel.send('Could not execute command.')
@@ -164,7 +164,7 @@ async def on_message(message):
             await message.channel.send('You are not in a voice channel. Please join a voice channel and try again.')
             return
         # Get the search query from the message content
-        response = get_youtube_song(message, content[6:-1])
+        response = get_youtube_song(message, content[6:])
         # Get the first video from the search results
         if response["items"]:
             video_id = response["items"][0]["id"]["videoId"]
