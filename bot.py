@@ -160,15 +160,11 @@ async def on_message(message):
         await message.channel.send("Generating image... Please wait...")
         response = generate_image(content[16:])
         await message.channel.send(response)
-    if ('haha' in content or 'lmao' in content) and 'http' not in content:
-        my_list_laughing = [1,2,3]
-        choice = random.choice(my_list_laughing)
-        if choice == 1:
-            await message.channel.send('https://tenor.com/view/haha-kid-laugh-laughing-gif-10594705')
-        if choice == 2:
-            await message.channel.send('https://tenor.com/view/lmao-dead-weak-lol-lmfao-gif-16296952')
-        if choice == 3:
-            await message.channel.send('https://tenor.com/view/baby-toddler-laughing-laugh-toppling-gif-23850035')
+    if any(keyword in content for keyword in ['haha','lmao']) and 'http' not in content:
+        my_list_laughing = ["https://tenor.com/view/haha-kid-laugh-laughing-gif-10594705",
+                            "https://tenor.com/view/lmao-dead-weak-lol-lmfao-gif-16296952",
+                            "https://tenor.com/view/baby-toddler-laughing-laugh-toppling-gif-23850035"]
+        await message.channel.send(random.choice(my_list_laughing))
     if ('!stock-ticker' in content) and 'http' not in content:
         try:
             ticker = await stocks.find_ticker(content[14:])
