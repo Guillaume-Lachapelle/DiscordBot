@@ -1,9 +1,12 @@
 import pandas as pd
 import os
 from alpha_vantage.timeseries import TimeSeries
+from dotenv import load_dotenv
 
-# Key taken from alpha vantage website. Keep this value safe.
-api_key = '{your alpha vantage api key}'
+# Load environment variables from .env file
+load_dotenv()
+
+api_key = os.getenv('ALPHA_VANTAGE_API_KEY')
 ts = TimeSeries(key=api_key, output_format='pandas')
 
 async def generate_data(my_symbol):
