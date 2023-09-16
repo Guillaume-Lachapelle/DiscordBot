@@ -9,6 +9,8 @@ import pytube
 import time
 import stocks
 from dotenv import load_dotenv
+from rembg import remove
+from PIL import Image
 
 #region Constants
 
@@ -115,6 +117,12 @@ async def queue_song(message, query):
         print(e)
         await message.channel.send("Could not add the song to the playlist. Please try again.")
         return
+    
+# Remove background from image
+def remove_background(image):
+    image_input = Image.open(image)
+    output = remove(image_input)
+    output.save("output.png")
 
 # Return all the bot's commands
 def get_commands():
@@ -132,6 +140,7 @@ def get_commands():
     `!playlist` - I will tell you how many songs are in queue\n\
     `!pause` - I will pause the song\n\
     `!resume` - I will resume the song\n\
+    `!rembg` - I will remove the background from the image you attach\n\
     I will also make sure to greet you when you join the server!'
     
 #endregion
@@ -317,6 +326,25 @@ async def on_message(message):
                 if file.endswith(".mp4"):
                     os.remove(file)
         except(PermissionError):
+            return
+        
+    if ('!rembg' in content) and 'http' not in content:
+        try:
+            if len(message.attachments) == 0:
+                await message.channel.send("Please attach an image to your message.")
+                return
+            else:
+                attachment = message.attachments[0]
+                await attachment.save(attachment.filename)
+                remove_background(attachment.filename)
+                await message.channel.send(file=discord.File('output.png'))
+                os.remove(attachment.filename)
+                os.remove('output.png')
+                return
+        except Exception as e:
+            print(e)
+            await message.channel.send("Could not remove the background. Please try again.")
+            os.remove(attachment.filename)
             return
         
 @client.event
