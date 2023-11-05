@@ -106,12 +106,14 @@ async def queue_song(message, query):
         # Get the first video from the search results
         if response["items"]:
             video_id = response["items"][0]["id"]["videoId"]
+            # retrieve the song title
+            video_title = pytube.YouTube(f"https://www.youtube.com/watch?v={video_id}", use_oauth=True, allow_oauth_cache=True).title
+            playlist_entry = {"id": video_id, "title": video_title}
+            playlist.append(playlist_entry)
         else:
             print("No results found")
             await message.channel.send("Could not find a video with that name. Please try again.")
             return
-        # Append the video ID to the playlist
-        playlist.append(video_id)
         await message.channel.send("Song added to the playlist.")
     except Exception as e:
         print(e)
@@ -222,7 +224,8 @@ async def on_message(message):
                 while voice_client.is_paused() and playlist:
                     await asyncio.sleep(1)
                 time.sleep(2)
-                video_id = playlist.pop(0)
+                video = playlist.pop(0)
+                video_id = video["id"]
                 # Use pytube to download the audio from the YouTube video
                 video = pytube.YouTube(f"https://www.youtube.com/watch?v={video_id}", use_oauth=True, allow_oauth_cache=True).streams.filter(only_audio=True).first()
                 video.download(".")
@@ -264,7 +267,11 @@ async def on_message(message):
         if not playlist:
             await message.channel.send("The playlist is empty.")
         else:
-            await message.channel.send(f"The playlist contains {len(playlist)} song(s).")
+            # Print the playlist titles and send as a single message
+            playlist_string = ""
+            for video in playlist:
+                playlist_string += f"{video['title']}\n"
+            await message.channel.send(f"The playlist contains {len(playlist)} song(s).\n {playlist_string}")
     
     if message.content.startswith("!pause"):
         try:
