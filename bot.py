@@ -161,7 +161,7 @@ async def on_message(message):
     
     if '!help' in content:
         await message.channel.send(get_commands())
-    if (client.user.name in message.content or (len(message.mentions) > 0 and message.mentions[0].name == client.user.name)):
+    if (client.user.name in message.content or (len(message.mentions) > 0 and message.mentions[0].name == client.user.name)) and not message.reference:
         await message.channel.send('Hello there! How can I help you? Type `!help` to see a list of commands.')
     if content.startswith('!question'):
         await message.channel.send('Generating response... Please wait...')
