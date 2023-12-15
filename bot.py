@@ -227,8 +227,9 @@ async def on_message(message):
                 video = playlist.pop(0)
                 video_id = video["id"]
                 # Use pytube to download the audio from the YouTube video
-                video = pytube.YouTube(f"https://www.youtube.com/watch?v={video_id}", use_oauth=True, allow_oauth_cache=True).streams.filter(only_audio=True).first()
-                video.download(".")
+                loop = asyncio.get_event_loop()
+                video = await loop.run_in_executor(None, lambda: pytube.YouTube(f"https://www.youtube.com/watch?v={video_id}", use_oauth=True, allow_oauth_cache=True).streams.filter(only_audio=True).first())
+                await loop.run_in_executor(None, lambda: video.download("."))
                 filename = video.default_filename
                 await message.channel.send(f"Playing `{filename[0:-4]}` in voice channel \"{voice_client.channel}\"")
                 
