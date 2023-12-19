@@ -1,51 +1,28 @@
 import os
-import atexit
-import asyncio
-import discord
-import openai
-import random
-import googleapiclient.discovery
-import pytube
-import time
-import stocks
 from dotenv import load_dotenv
-from rembg import remove
-from PIL import Image
+import discord
+import messages
+import music
+import stocks
+import ai
+from discord import app_commands
+import asyncio
 
 #region Constants
 
-# Bot's token
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
 # Bot's token
 token = os.getenv('DISCORD_TOKEN')
 
-# Currently expired. Openai free trial is over...
-openai.api_key = os.getenv('OPENAI_API_KEY')
-
-YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
-
-client = discord.Client(intents=discord.Intents.all())
-
-# Keep track of the voice client
-voice_client = None
-filename = None
-playlist = []
+# Discord client
+intents = discord.Intents.all()
+client = discord.Client(intents=intents)
+tree = app_commands.CommandTree(client)
 
 #endregion
 
-#region atexit
-
-# To be able to delete the music file when the bot is closed
-def delete_file_on_exit():
-    if filename and os.path.exists(filename):
-        time.sleep(1)
-        os.remove(filename)
-
-atexit.register(delete_file_on_exit)
-
-#endregion
 
 #region Helper Functions
 
@@ -54,365 +31,155 @@ def get_default_channel(guild):
     for channel in guild.channels:
         if channel.name == 'general':
             return channel
+        
+# Return all the bot's commands dynamically
+def get_commands():
+    command_list = []
+    for command in tree.get_commands():
+        command_list.append(f"`/{command.name}` - {command.description}")
+    return "The following commands are available:\n\n" + "\n".join(command_list)
+        
+#endregion
 
-# Use the GPT-3 API to generate a response to a message
-def generate_response(message):
-    model_engine = "text-davinci-002"
-    prompt = (f"{message}\n")
-    completions = openai.Completion.create(
-        engine=model_engine,
-        prompt=prompt,
-        max_tokens=1024,
-        n=1,
-        stop=None,
-        temperature=0.5,
-    )
-    message = completions.choices[0].text
-    return message
 
-# Use the openai API to generate an image
-def generate_image(message):
-    # Use DALL-E to generate the image
-    response = openai.Image.create(
-      model="image-alpha-001",
-      prompt=message,
-    )
-    return response.data[0]['url']
+#region Slash Commands
 
-# Play a video on YouTube
-def get_youtube_song(query):
-    # Use the YouTube Data API to search for videos that match the query
-        youtube = googleapiclient.discovery.build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
-        request = youtube.search().list(
-        part="id",
-        type="video",
-        q=query,
-        videoDefinition="high",
-        maxResults=1,
-        fields="items(id(videoId))"
-        )
-        response = request.execute()
-        return response
+@tree.command(name="sync", description="Syncs the bot's commands with the server")
+async def sync(ctx):
+    await ctx.response.send_message("Syncing commands... Please wait...")
+    await tree.sync()
+    await ctx.followup.send("Sync complete!")
+
+@tree.command(name="help", description="Displays all the available commands with a description of each one")
+async def help(ctx):
+    await ctx.response.send_message(get_commands())
     
-# Queue a song to be played
-async def queue_song(message, query):
-    global playlist
+@tree.command(name="ping", description="Pings the bot to check if it is online")
+async def ping(ctx):
+    await ctx.response.send_message("Pong!")
+    
+@tree.command(name="rembg", description="Removes the background from an image")
+async def rembg(ctx):
+    await ctx.response.send_message("To process attachments, please use the command `!rembg` and send the image as an attachment.")
+    
+@tree.command(name="question", description="Ask a question and the bot will try to answer it")
+async def question(ctx, question: str):
     try:
-        if message.author.voice is None:
-            await message.channel.send('You are not in a voice channel. Please join a voice channel and try again.')
-            return
-        # Get the search query from the message content
-        response = get_youtube_song(query)
-        # Get the first video from the search results
-        if response["items"]:
-            video_id = response["items"][0]["id"]["videoId"]
-            # retrieve the song title
-            video_title = pytube.YouTube(f"https://www.youtube.com/watch?v={video_id}", use_oauth=True, allow_oauth_cache=True).title
-            playlist_entry = {"id": video_id, "title": video_title}
-            playlist.append(playlist_entry)
-        else:
-            print("No results found")
-            await message.channel.send("Could not find a video with that name. Please try again.")
-            return
-        await message.channel.send("Song added to the playlist.")
+        await ctx.response.send_message("Generating response... Please wait...")
+        response = await ai.generate_response(question)
+        await ctx.followup.send(response)
+    except Exception as e:
+        await ctx.followup.send("Could not generate response. Please try again.")
+    
+@tree.command(name="generate-image", description="Generate an image based on a prompt")
+async def generate_image(ctx, prompt: str):
+    try:
+        await ctx.response.send_message("Generating image... Please wait...")
+        image = await ai.generate_image(prompt)
+        await ctx.followup.send(image)
+    except Exception as e:
+        await ctx.followup.send("Could not generate image. Please try again.")
+        
+@tree.command(name="stock-ticker", description="Get the stock ticker of a company")
+async def stock_ticker(ctx, company: str):
+    try:
+        await ctx.response.send_message("Getting stock ticker... Please wait...")
+        ticker = await stocks.find_ticker(company)
+        await ctx.followup.send(ticker)
+    except Exception as e:
+        await ctx.followup.send("Could not get stock ticker. Please try again.")
+        
+@tree.command(name="stock-info", description="Get historical information about a stock")
+async def stock_info(ctx, ticker: str):
+    try:
+        await ctx.response.send_message("Getting stock information... Please wait...")
+        await stocks.generate_data(ticker)
+    except Exception as e:
+            print(e)
+            await ctx.followup.send('Could not get stock information. Please try again.')
+    if os.path.exists('stocks.csv'):
+        with open('stocks.csv', 'rb') as f:
+            file = discord.File(f)
+            await ctx.followup.send(file=file)
+    if(os.path.exists('stocks.csv')):
+            os.remove('stocks.csv')
+            
+@tree.command(name="play", description="Play a song")
+async def play(ctx, song: str = None):
+    try:
+        await music.play(ctx, song)
     except Exception as e:
         print(e)
-        await message.channel.send("Could not add the song to the playlist. Please try again.")
-        return
+        await ctx.followup.send("Could not play the song. Please try again.")
+        
+@tree.command(name="queue", description="Add a song to the playlist")
+async def queue(ctx, song: str):
+    await music.queue_song(ctx, song)
     
-# Remove background from image
-def remove_background(image):
-    image_input = Image.open(image)
-    output = remove(image_input)
-    output.save("output.png")
+@tree.command(name="clear", description="Clear the playlist")
+async def clear(ctx):
+    await music.clear_playlist(ctx)
+    
+@tree.command(name="playlist", description="Display the playlist")
+async def playlist(ctx):
+    await music.display_playlist(ctx)
+    
+@tree.command(name="pause", description="Pause the current song")
+async def pause(ctx):
+    await music.pause(ctx)
+    
+@tree.command(name="resume", description="Resume the current song")
+async def resume(ctx):
+    await music.resume(ctx)
+    
+@tree.command(name="skip", description="Skip the current song")
+async def skip(ctx):
+    await music.skip(ctx)
+    
+@tree.command(name="stop", description="Stop playing music, clear the playlist, and disconnect from the voice channel")
+async def stop(ctx):
+    await music.stop(ctx)
 
-# Return all the bot's commands
-def get_commands():
-    return 'The following commands are available:\n\n\t`!help` - Displays this message\n\
-    `@HelperBot` or `HelperBot` - I will send you a prompt asking how I can help you\n\
-    `haha` or `lmao` - I will react with a laughing GIF\n\
-    `!question` - Ask any question after this command and I will try to answer it\n\
-    `!generate-image` - I will generate an image based on your prompt\n\
-    `!stock-ticker` - I will return the ticker symbol of the stock you request\n\
-    `!stock-info` - I will return the stock information of the stock you request\n\
-    `!play` - I will play the song you request (It may help to put the title inside "" quotations)\n\
-    `!stop` - I will stop playing the song and clear the music queue\n\
-    `!queue` - I will queue the song and it will be played after the one playing is done\n\
-    `!clear` - I will clear the music queue\n\
-    `!playlist` - I will tell you how many songs are in queue\n\
-    `!pause` - I will pause the song\n\
-    `!resume` - I will resume the song\n\
-    `!rembg` - I will remove the background from the image you attach\n\
-    I will also make sure to greet you when you join the server!'
-    
 #endregion
+
 
 #region Discord Events
 
 @client.event
-async def on_message(message):
-    content = message.content.lower()
-    if message.author == client.user:
-        return
-    
-    global voice_client
-    global filename
-    global playlist
-    
-    if '!help' in content:
-        await message.channel.send(get_commands())
-    if (client.user.name in message.content or (len(message.mentions) > 0 and message.mentions[0].name == client.user.name)) and not message.reference:
-        await message.channel.send('Hello there! How can I help you? Type `!help` to see a list of commands.')
-    if content.startswith('!question'):
-        await message.channel.send('Generating response... Please wait...')
-        response = generate_response(content[10:])
-        await message.channel.send(response)
-    if content.startswith('!generate-image'):
-        await message.channel.send("Generating image... Please wait...")
-        response = generate_image(content[16:])
-        await message.channel.send(response)
-    if any(keyword in content for keyword in ['haha','lmao']) and 'http' not in content:
-        my_list_laughing = ["https://tenor.com/view/haha-kid-laugh-laughing-gif-10594705",
-                            "https://tenor.com/view/lmao-dead-weak-lol-lmfao-gif-16296952",
-                            "https://tenor.com/view/baby-toddler-laughing-laugh-toppling-gif-23850035"]
-        await message.channel.send(random.choice(my_list_laughing))
-    if ('!stock-ticker' in content) and 'http' not in content:
-        try:
-            ticker = await stocks.find_ticker(content[14:])
-            await message.channel.send(ticker)
-        except:
-            await message.channel.send('Could not find that stock. Please try again.')
-    if ('!stock-info' in content) and 'http' not in content:
-        try:
-            await stocks.generate_data(content[12:])
-        except Exception as e:
-            print(e)
-            await message.channel.send('Could not execute command.')
-        if os.path.exists('stocks.csv'):
-            with open('stocks.csv', 'rb') as f:
-                file = discord.File(f)
-                await message.channel.send(file=file)
-        if(os.path.exists('stocks.csv')):
-            os.remove('stocks.csv')
-    if message.content.startswith("!play") and not message.content.startswith("!playlist"):
-        try:
-            if voice_client is not None and voice_client.is_connected() and voice_client.is_playing():
-                if voice_client.is_paused():
-                    await message.channel.send(f"There is already a song that is paused in the voice channel \"{voice_client.channel}\". Please use the `!resume` command to resume the song or the `!queue` command to add it to the playlist. If you wish to stop the music and clear the playlist, use the `!stop` command.")
-                else:
-                    await message.channel.send(f"I am already playing a song in the voice channel \"{voice_client.channel}\". Please use the `!stop` command to stop the current song or use the `!queue` command to add it to the playlist.")
-                return
-            if message.author.voice is None:
-                await message.channel.send('You are not in a voice channel. Please join a voice channel and try again.')
-                return
-            if voice_client and voice_client.is_paused():
-                await message.channel.send('I am currently paused. Please use the `!resume` command to resume the song.')
-                return
-            # Check if the playlist is empty
-            if not playlist and content[6:] == "":
-                await message.channel.send("Please enter a song name.")
-                return
-            if not playlist:
-                await queue_song(message, content[6:])
-            while playlist:
-                # Get the voice channel the user is in
-                voice_channel = message.author.voice.channel
-                # Connect to the voice channel\
-                if voice_client is None or voice_client.is_connected() == False:
-                    voice_client = await voice_channel.connect()
-                # If the player is paused using the command !pause, I want this to wait until the !resume command is used
-                while voice_client.is_paused() and playlist:
-                    await asyncio.sleep(1)
-                time.sleep(2)
-                video = playlist.pop(0)
-                video_id = video["id"]
-                # Use pytube to download the audio from the YouTube video
-                loop = asyncio.get_event_loop()
-                video = await loop.run_in_executor(None, lambda: pytube.YouTube(f"https://www.youtube.com/watch?v={video_id}", use_oauth=True, allow_oauth_cache=True).streams.filter(only_audio=True).first())
-                await loop.run_in_executor(None, lambda: video.download("."))
-                filename = video.default_filename
-                await message.channel.send(f"Playing `{filename[0:-4]}` in voice channel \"{voice_client.channel}\"")
-                
-                # Create a discord.FFmpegPCMAudio object to play the audio
-                audio = discord.FFmpegPCMAudio(f"{filename}")
-
-                # Play the audio
-                voice_client.play(audio)
-                # Wait for the audio to finish playing
-                while (voice_client is not None) and voice_client.is_playing():
-                    await asyncio.sleep(1)
-                if os.path.exists(filename) and not voice_client.is_paused():
-                    os.remove(filename)
-            # Disconnect from the voice channel
-            if (voice_client is not None) and not voice_client.is_paused() and (voice_client.is_playing() == False or voice_client.is_connected()):
-                await voice_client.disconnect()
-                voice_client = None
-        except Exception as e:
-            print(e)
-            if voice_client is not None and (voice_client.is_playing() == False or voice_client.is_connected()):
-                await voice_client.disconnect()
-                voice_client = None
-            if os.path.exists(filename):
-                os.remove(filename)
-            await message.channel.send("Could not play the song. Please try again.")
-            return
-            
-    if message.content.startswith("!queue"):
-        await queue_song(message, content[7:])
-        
-    if message.content.startswith("!clear"):
-        playlist.clear()
-        await message.channel.send("The playlist has been cleared.")
-    
-    if message.content.startswith("!playlist"):
-        if not playlist:
-            await message.channel.send("The playlist is empty.")
-        else:
-            # Print the playlist titles and send as a single message
-            playlist_string = ""
-            for video in playlist:
-                playlist_string += f"{video['title']}\n"
-            await message.channel.send(f"The playlist contains {len(playlist)} song(s).\n {playlist_string}")
-    
-    if message.content.startswith("!pause"):
-        try:
-            if voice_client is not None and voice_client.is_playing():
-                voice_client.pause()
-                await message.channel.send("Music playback paused.")
-            else:
-                await message.channel.send("No song is currently playing.")
-        except Exception as e:
-            print(e)
-            await message.channel.send("Could not pause the song. Please try again.")
-            return
-        
-    if message.content.startswith("!resume"):
-        try:
-            if voice_client is not None and voice_client.is_paused():
-                voice_client.resume()
-                await message.channel.send("Music playback resumed.")
-            elif voice_client is not None and voice_client.is_playing():
-                await message.channel.send("Music playback is already resumed.")
-            else:
-                await message.channel.send("No song is currently paused.")
-        except Exception as e:
-            print(e)
-            await message.channel.send("Could not resume the song. Please try again.")
-            return
-    
-    if message.content.startswith("!skip"):
-        try:
-            if voice_client is not None and voice_client.is_playing():
-                voice_client.stop()
-                await message.channel.send("Song skipped.")
-            else:
-                await message.channel.send("No song is currently playing.")
-        except Exception as e:
-            print(e)
-            await message.channel.send("Could not skip the song. Please try again.")
-            return
-        
-    elif message.content == "!stop":
-        if voice_client is None:
-            await message.channel.send('I am not playing a song.')
-            return
-        # Stop the audio and disconnect from the voice channel
-        if voice_client:
-            voice_client.stop()
-            await voice_client.disconnect()
-            voice_client = None
-            
-        playlist.clear()
-        await message.channel.send("Music stopped. The playlist has been cleared.")
-            
-    if (voice_client is None) and (filename is not None):
-        try:
-            time.sleep(1)
-            current_directory = os.getcwd()
-            files = os.listdir(current_directory)
-            for file in files:
-                if file.endswith(".mp4"):
-                    os.remove(file)
-        except(PermissionError):
-            return
-        
-    if ('!rembg' in content) and 'http' not in content:
-        try:
-            if len(message.attachments) == 0:
-                await message.channel.send("Please attach an image to your message.")
-                return
-            else:
-                attachment = message.attachments[0]
-                await attachment.save(attachment.filename)
-                remove_background(attachment.filename)
-                await message.channel.send(file=discord.File('output.png'))
-                os.remove(attachment.filename)
-                os.remove('output.png')
-                return
-        except Exception as e:
-            print(e)
-            await message.channel.send("Could not remove the background. Please try again.")
-            os.remove(attachment.filename)
-            return
-        
-@client.event
-async def on_disconnect():
-    global filename
-    try:
-        # Check if the file exists
-        if os.path.exists(filename):
-            # Delete the file
-            time.sleep(1)
-            os.remove(filename)
-    except Exception as e:
-        # Print an error message if the file couldn't be deleted
-        print(f"Error deleting file: {e}")
-        
-# In the on_voice_state_update event handler
-@client.event
-async def on_voice_state_update(member, before, after):
-    # Check if the member who triggered the update is the bot itself
-    if member == client.user:
-        return
-
-    # Get the bot's voice client
-    global voice_client
-
-    # Check if the bot is connected to a voice channel
-    if voice_client and voice_client.is_connected():
-        channel = voice_client.channel
-
-        # Check if the bot is alone in the voice channel
-        if len(channel.members) == 1 and client.user in channel.members:
-            # Check if the bot is playing something
-            if voice_client.is_playing():
-                # Stop playing and disconnect
-                voice_client.stop()
-                await voice_client.disconnect()
-
-                # Delete the file if it exists
-                if filename is not None and os.path.exists(filename):
-                    # Delete the file
-                    time.sleep(1)
-                    os.remove(filename)
-            else:
-                # Disconnect without stopping if not playing
-                await voice_client.disconnect()
-
-@client.event
 async def on_ready():
+    asyncio.create_task(tree.sync())
     print(f"Logged in as \"{client.user.name}\"")
     print(f"ID: {client.user.id}")
     print('------')
+
+@client.event
+async def on_message(message):
+    if message.author == client.user:
+        return
         
+    if (client.user.name in message.content or (len(message.mentions) > 0 and message.mentions[0].name == client.user.name)) and not message.reference:
+        await message.channel.send('Hello there! How can I help you? Type `!help` to see a list of commands.')
+    
+    # Delegate messages to messages.py
+    try:
+        await messages.process_message(client, message)
+    except Exception as e:
+        print(e)
+        await message.channel.send("Could not process the message. Please try again.")
+        return
+    
+@client.event
+async def on_disconnect():
+    await music.disconnect()
+    
+@client.event
+async def on_voice_state_update(member, before, after):
+    await music.process_voice_state_update(member, before, after, client)
+    
 @client.event
 async def on_stop():
-    global filename
-    # Delete the song file if it exists
-    if os.path.exists(filename):
-        time.sleep(1)
-        os.remove(filename)
-        
+    await music.on_stop()
+    
 @client.event
 async def on_member_join(member):
     server = member.guild
@@ -424,8 +191,9 @@ async def on_member_join(member):
 async def on_guild_join(guild):
     # Send a greeting message to the general channel
     general_channel = get_default_channel(guild)
-    await general_channel.send("Hello, I am a Discord bot! I am here to help with various tasks and provide information.\nTo get started, type `!help` to see a list of commands.")
-    
+    await general_channel.send("Hello, I am a Discord bot! I am here to help with various tasks and provide information.\nTo get started, type `/help` to see a list of commands.")
+
 #endregion
+
 
 client.run(token)
