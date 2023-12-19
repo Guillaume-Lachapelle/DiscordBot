@@ -197,7 +197,6 @@ async def play(ctx, song):
         # Check if the user is in a voice channel
         if ctx.user.voice is None:
             response_messages.append('You are not in a voice channel. Please join a voice channel and try again.')
-            return
         elif voice_client is not None and voice_client.is_connected() and voice_client.is_paused():
             if voice_client.is_paused():
                 response_messages.append(f"There is already a song that is paused in the voice channel \"{voice_client.channel}\". Please use the `/resume` command to resume the song or the `/queue` command to add it to the playlist. If you wish to stop the music and clear the playlist, use the `/stop` command.")
