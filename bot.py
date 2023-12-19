@@ -371,33 +371,33 @@ async def on_disconnect():
 # In the on_voice_state_update event handler
 @client.event
 async def on_voice_state_update(member, before, after):
-    global voice_client
-    if before.channel is not None and (before.channel.members == [] or before.channel.members == [client.user]):
-        if voice_client and not (voice_client.is_paused()):
-            voice_client.stop()
-            # Disconnect from the voice channel
-            await voice_client.disconnect()
-        if filename is not None and os.path.exists(filename) and not (voice_client.is_paused()):
-            time.sleep(1)
-            os.remove(filename)
-    # If the member stopped playing the audio or left the voice channel
-    if (before.channel is not None) and (after.channel is not None):
-        if (member == client.user and (not after.channel)) or (before.channel and before.channel.id == after.channel.id):
-            if voice_client and not (voice_client.is_paused()):
-                # Stop the audio
-                voice_client.stop()
-                # Disconnect from the voice channel
-                await voice_client.disconnect()
-            if filename is not None and os.path.exists(filename) and not (voice_client.is_paused()):
-                time.sleep(1)
-                os.remove(filename)
+    # Check if the member who triggered the update is the bot itself
     if member == client.user:
-        if before.channel is not None and after.channel is None:
-            voice_client = None
-            # The bot has left the voice channel, delete the file
-            if filename is not None and os.path.exists(filename) and voice_client and not (voice_client.is_paused()):
-                time.sleep(1)
-                os.remove(filename)
+        return
+
+    # Get the bot's voice client
+    global voice_client
+
+    # Check if the bot is connected to a voice channel
+    if voice_client and voice_client.is_connected():
+        channel = voice_client.channel
+
+        # Check if the bot is alone in the voice channel
+        if len(channel.members) == 1 and client.user in channel.members:
+            # Check if the bot is playing something
+            if voice_client.is_playing():
+                # Stop playing and disconnect
+                voice_client.stop()
+                await voice_client.disconnect()
+
+                # Delete the file if it exists
+                if filename is not None and os.path.exists(filename):
+                    # Delete the file
+                    time.sleep(1)
+                    os.remove(filename)
+            else:
+                # Disconnect without stopping if not playing
+                await voice_client.disconnect()
 
 @client.event
 async def on_ready():
