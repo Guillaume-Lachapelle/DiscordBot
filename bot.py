@@ -143,6 +143,10 @@ async def poll(ctx, question: str, option1: str, option2: str, option3: str = No
 @tree.command(name="swap", description="Swap two songs in the playlist")
 async def swap(ctx, index1: int, index2: int):
     await music.swap(ctx, index1, index2)
+    
+@tree.command(name="remove", description="Remove a song from the playlist")
+async def remove(ctx, index: int):
+    await music.remove(ctx, index)
 
 #endregion
 

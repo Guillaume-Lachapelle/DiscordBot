@@ -373,4 +373,18 @@ async def swap(ctx, index1: int, index2: int):
         await ctx.response.send_message("Could not swap the songs. Please try again.")
         return
     
+async def remove(ctx, index: int):
+    global playlist
+    try:
+        if index < 1 or index > len(playlist):
+            await ctx.response.send_message("Invalid index. Please try again.")
+            return
+        index -= 1
+        playlist.pop(index)
+        await ctx.response.send_message(f"Removed song `{playlist[index]['title']}` from the playlist.\n{await display_playlist(ctx, True)}")
+    except Exception as e:
+        print(e)
+        await ctx.response.send_message("Could not remove the song. Please try again.")
+        return
+    
 #endregion
