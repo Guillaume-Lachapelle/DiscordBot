@@ -20,6 +20,7 @@ voice_client = None
 filename = None
 playlist = []
 last_play_channels = {}
+current_song = None
 
 #endregion
 
@@ -57,6 +58,7 @@ def get_youtube_song(query):
 # Queue a song to be played
 async def queue_song(ctx, query, from_play = False):
     global playlist
+    global voice_client
     try:
         if ctx.user.voice is None:
             await ctx.response.send_message('You are not in a voice channel. Please join a voice channel and try again.')
@@ -78,6 +80,10 @@ async def queue_song(ctx, query, from_play = False):
             else:
                 print("No results found")
                 await ctx.channel.send("Could not find a video with that name. Please try again.")
+                if voice_client is not None and voice_client.is_connected() == True and voice_client.is_playing() == False and not playlist:
+                    await voice_client.disconnect()
+                    await disconnect()
+                    voice_client = None
                 return
         
         playlist_entry = {"id": video_id, "title": video_title}
@@ -89,6 +95,10 @@ async def queue_song(ctx, query, from_play = False):
     except Exception as e:
         print(e)
         await ctx.channel.send("Could not add the song to the playlist. Please try again.")
+        if voice_client is not None and voice_client.is_connected() == True and voice_client.is_playing() == False and not playlist:
+            await voice_client.disconnect()
+            await disconnect()
+            voice_client = None
         return
     
 # Delete the song file when the bot is disconnected
@@ -96,7 +106,7 @@ async def disconnect():
     global filename
     try:
         # Check if the file exists
-        if os.path.exists(filename):
+        if filename and os.path.exists(filename):
             # Delete the file
             time.sleep(1)
             os.remove(filename)
@@ -154,6 +164,7 @@ async def handle_play(ctx):
     global voice_client
     global filename
     global playlist
+    global current_song
     
     while playlist:
         # Get the voice channel the user is in
@@ -165,6 +176,7 @@ async def handle_play(ctx):
         while voice_client.is_paused() and playlist:
             await asyncio.sleep(1)
         time.sleep(2)
+        current_song = playlist[0]
         video = playlist.pop(0)
         video_id = video["id"]
         # Use pytube to download the audio from the YouTube video
@@ -188,6 +200,7 @@ async def handle_play(ctx):
     if (voice_client is not None) and not voice_client.is_paused() and (voice_client.is_playing() == False or voice_client.is_connected()):
         await voice_client.disconnect()
         voice_client = None
+        current_song = None
 
 #endregion
 
@@ -319,7 +332,7 @@ async def skip(ctx):
         if voice_client is not None and voice_client.is_playing():
             voice_client.stop()
             if playlist:
-                await ctx.response.send_message("Song skipped. Playing next song...")
+                await ctx.response.send_message("Song skipped. Playing next song... Please wait...")
             else:
                 await ctx.response.send_message("Song skipped.")
                 if voice_client:
@@ -385,6 +398,26 @@ async def remove(ctx, index: int):
     except Exception as e:
         print(e)
         await ctx.response.send_message("Could not remove the song. Please try again.")
+        return
+    
+async def restart(ctx):
+    global voice_client
+    global filename
+    global playlist
+    global current_song
+    try:
+        if voice_client is None or not voice_client.is_playing() and not voice_client.is_paused():
+            await ctx.response.send_message("There is no song playing.")
+            return
+        elif voice_client.is_paused():
+            await ctx.response.send_message("The song is paused. Please use the `/resume` command to resume the song and then the `/restart` command to restart it.")
+            return
+        voice_client.stop()
+        playlist.insert(0, current_song)
+        await ctx.response.send_message("Song restarting... Please wait...")
+    except Exception as e:
+        print(e)
+        await ctx.response.send_message("Could not restart the song. Please try again.")
         return
     
 #endregion

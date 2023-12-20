@@ -147,6 +147,10 @@ async def swap(ctx, index1: int, index2: int):
 @tree.command(name="remove", description="Remove a song from the playlist")
 async def remove(ctx, index: int):
     await music.remove(ctx, index)
+    
+@tree.command(name="restart", description="Restart the current song")
+async def restart(ctx):
+    await music.restart(ctx)
 
 #endregion
 
@@ -168,7 +172,6 @@ async def on_message(message):
     if (client.user.name in message.content or (len(message.mentions) > 0 and message.mentions[0].name == client.user.name)) and not message.reference:
         await message.channel.send('Hello there! How can I help you? Type `!help` to see a list of commands.')
     
-    # Delegate messages to messages.py
     try:
         await messages.process_message(client, message)
     except Exception as e:
