@@ -26,12 +26,6 @@ tree = app_commands.CommandTree(client)
 
 
 #region Helper Functions
-
-# Get the default channel of the server
-def get_default_channel(guild):
-    for channel in guild.channels:
-        if channel.name == 'general':
-            return channel
         
 # Return all the bot's commands dynamically
 def get_commands():
@@ -188,15 +182,14 @@ async def on_stop():
     
 @client.event
 async def on_member_join(member):
-    server = member.guild
-    general_channel = get_default_channel(member.guild)
-    embed=discord.Embed(title="Welcome!",description=f"{member.mention} Just Joined {server.name}!",color=0x00ff00)
+    general_channel = member.guild.system_channel
+    embed=discord.Embed(title="Welcome!",description=f"{member.mention} Just Joined {member.guild.name}!",color=0x00ff00)
     await general_channel.send(embed=embed)
     
 @client.event
 async def on_guild_join(guild):
     # Send a greeting message to the general channel
-    general_channel = get_default_channel(guild)
+    general_channel = guild.system_channel
     await general_channel.send("Hello, I am a Discord bot! I am here to help with various tasks and provide information.\nTo get started, type `/help` to see a list of commands.")
 
 #endregion

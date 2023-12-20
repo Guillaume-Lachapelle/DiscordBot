@@ -19,6 +19,7 @@ YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
 voice_client = None
 filename = None
 playlist = []
+last_play_channels = {}
 
 #endregion
 
@@ -94,7 +95,6 @@ async def queue_song(ctx, query, from_play = False):
 async def disconnect():
     global filename
     try:
-        
         # Check if the file exists
         if os.path.exists(filename):
             # Delete the file
@@ -108,6 +108,13 @@ async def disconnect():
 async def process_voice_state_update(member, before, after, client):
     # Check if the member who triggered the update is the bot itself
     if member == client.user:
+        # Check if the bot was connected to a voice channel before the update, but not after the update
+        if before.channel is not None and after.channel is None:
+            # Get the channel where the "/play" command was last used in the guild
+            channel = last_play_channels.get(member.guild.id)
+            if channel is not None:
+                # Send a message to the channel
+                await channel.send(f"The bot has disconnected from voice channel `{before.channel.name}`")
         return
 
     # Get the bot's voice client
@@ -193,6 +200,7 @@ async def play(ctx, song):
     global filename
     global playlist
     response_messages = []
+    global last_play_channels
     try:
         # Check if the user is in a voice channel
         if ctx.user.voice is None:
@@ -220,6 +228,7 @@ async def play(ctx, song):
                 await queue_song(ctx, song, True)
             while not playlist:
                 await asyncio.sleep(1)
+            last_play_channels[ctx.guild.id] = ctx.channel
             await handle_play(ctx)
         else:  # If there are error messages
             await ctx.response.send_message("\n".join(response_messages))
