@@ -254,15 +254,20 @@ async def clear_playlist(ctx):
         return
     
 # Display the playlist
-async def display_playlist(ctx):
+async def display_playlist(ctx, new = False):
     global playlist
     try:
         if not playlist:
             await ctx.response.send_message("The playlist is empty.")
             return
-        playlist_string = "Playlist:\n"
+        if new:
+            playlist_string = "New playlist:\n"
+        else:
+            playlist_string = "Playlist:\n"
         for i in range(len(playlist)):
             playlist_string += f"{i+1}. {playlist[i]['title']}\n"
+        if new:
+            return playlist_string
         await ctx.response.send_message(playlist_string)
     except Exception as e:
         print(e)
@@ -349,6 +354,23 @@ async def stop(ctx):
     except Exception as e:
         print(e)
         await ctx.response.send_message("Could not stop playing music. Please try again.")
+        return
+    
+async def swap(ctx, index1: int, index2: int):
+    global playlist
+    try:
+        if index1 < 1 or index1 > len(playlist) or index2 < 1 or index2 > len(playlist):
+            await ctx.response.send_message("Invalid index. Please try again.")
+            return
+        index1 -= 1
+        index2 -= 1
+        temp = playlist[index1]
+        playlist[index1] = playlist[index2]
+        playlist[index2] = temp
+        await ctx.response.send_message(f"Swapped songs `{playlist[index1]['title']}` and `{playlist[index2]['title']}`.\n{await display_playlist(ctx, True)}")
+    except Exception as e:
+        print(e)
+        await ctx.response.send_message("Could not swap the songs. Please try again.")
         return
     
 #endregion

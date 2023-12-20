@@ -139,6 +139,10 @@ async def stop(ctx):
 async def poll(ctx, question: str, option1: str, option2: str, option3: str = None, option4: str = None, option5: str = None, option6: str = None, option7: str = None, option8: str = None, option9: str = None, option10: str = None):
     options = [option for option in (option1, option2, option3, option4, option5, option6, option7, option8, option9, option10) if option is not None]
     await polls.create_poll(ctx, question, options)
+    
+@tree.command(name="swap", description="Swap two songs in the playlist")
+async def swap(ctx, index1: int, index2: int):
+    await music.swap(ctx, index1, index2)
 
 #endregion
 
