@@ -4,6 +4,7 @@ import discord
 import messages
 import music
 import stocks
+import polls
 import ai
 from discord import app_commands
 import asyncio
@@ -139,6 +140,11 @@ async def skip(ctx):
 @tree.command(name="stop", description="Stop playing music, clear the playlist, and disconnect from the voice channel")
 async def stop(ctx):
     await music.stop(ctx)
+    
+@tree.command(name="poll", description="Create a poll")
+async def poll(ctx, question: str, option1: str, option2: str, option3: str = None, option4: str = None, option5: str = None, option6: str = None, option7: str = None, option8: str = None, option9: str = None, option10: str = None):
+    options = [option for option in (option1, option2, option3, option4, option5, option6, option7, option8, option9, option10) if option is not None]
+    await polls.create_poll(ctx, question, options)
 
 #endregion
 
