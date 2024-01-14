@@ -197,7 +197,7 @@ async def handle_play(ctx):
         if os.path.exists(filename) and not voice_client.is_paused():
             os.remove(filename)
     # Disconnect from the voice channel
-    if (voice_client is not None) and not voice_client.is_paused() and (voice_client.is_playing() == False or voice_client.is_connected()):
+    if (voice_client is not None) and not voice_client.is_paused() and (voice_client.is_playing() == False and voice_client.is_connected()):
         await voice_client.disconnect()
         voice_client = None
         current_song = None
