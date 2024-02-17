@@ -170,7 +170,7 @@ async def handle_play(ctx):
         # Get the voice channel the user is in
         voice_channel = ctx.user.voice.channel
         # Connect to the voice channel\
-        if voice_client is None or voice_client.is_connected() == False:
+        if not voice_client.is_connected():
             voice_client = await voice_channel.connect()
         # If the player is paused using the command /pause, I want this to wait until the /resume command is used
         while voice_client.is_paused() and playlist:
@@ -237,9 +237,8 @@ async def play(ctx, song):
             
         if not response_messages:  # If there are no error messages
             await ctx.response.send_message("Searching for song... Please wait...")
-            if not playlist:
-                await queue_song(ctx, song, True)
-            while not playlist:
+            await queue_song(ctx, song, True)
+            while not playlist or voice_client.is_playing() or voice_client.is_paused():
                 await asyncio.sleep(1)
             last_play_channels[ctx.guild.id] = ctx.channel
             await handle_play(ctx)
