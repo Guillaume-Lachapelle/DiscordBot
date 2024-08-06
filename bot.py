@@ -159,8 +159,8 @@ async def remove(ctx, index: int):
 async def restart(ctx):
     await music.restart(ctx)
     
-@tree.command(name="reminder", description="Set a reminder for a specified date and time (format: YYYY-MM-DD HH:MM)")
-async def reminder(ctx, date: str, time: str, message: str):
+@tree.command(name="set-reminder", description="Set a reminder for a specified date and time (format: YYYY-MM-DD HH:MM)")
+async def set_reminder(ctx, date: str, time: str, message: str):
     await reminders.add_reminder(ctx, date, time, message)
     
 @tree.command(name="list-reminders", description="List all upcoming reminders")
