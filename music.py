@@ -152,12 +152,12 @@ async def process_voice_state_update(member, before, after, client):
                 await voice_client.disconnect()
              
 # Delete the song file when the bot is stopped   
-async def on_stop():
-    global filename
-    # Delete the song file if it exists
-    if os.path.exists(filename):
-        time.sleep(1)
-        os.remove(filename)
+# async def on_stop():
+#     global filename
+#     # Delete the song file if it exists
+#     if os.path.exists(filename):
+#         time.sleep(1)
+#         os.remove(filename)
         
 # Play the next song in the playlist
 async def handle_play(ctx):

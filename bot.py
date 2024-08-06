@@ -9,6 +9,7 @@ import music
 import stocks
 import polls
 import ai
+import reminders
 from discord import app_commands
 import asyncio
 
@@ -44,9 +45,12 @@ def get_commands():
 
 @tree.command(name="sync", description="Syncs the bot's commands with the server")
 async def sync(ctx):
-    await ctx.response.send_message("Syncing commands... Please wait...")
-    await tree.sync()
-    await ctx.followup.send("Sync complete!")
+    try:
+        await ctx.response.send_message("Syncing commands... Please wait...")
+        await tree.sync()
+        await ctx.followup.send("Sync complete!")
+    except Exception as e:
+        await ctx.followup.send(f"Sync failed: {e}")
 
 @tree.command(name="help", description="Displays all the available commands with a description of each one")
 async def help(ctx):
@@ -154,6 +158,26 @@ async def remove(ctx, index: int):
 @tree.command(name="restart", description="Restart the current song")
 async def restart(ctx):
     await music.restart(ctx)
+    
+@tree.command(name="reminder", description="Set a reminder for a specified date and time (format: YYYY-MM-DD HH:MM)")
+async def reminder(ctx, date: str, time: str, message: str):
+    await reminders.add_reminder(ctx, date, time, message)
+    
+@tree.command(name="list-reminders", description="List all upcoming reminders")
+async def view_reminders(ctx):
+    await reminders.list_reminders(ctx)
+    
+@tree.command(name="delete-reminder", description="Delete a specific reminder by its index")
+async def delete_reminder(ctx, index: int):
+    await reminders.delete_reminder(ctx, index)
+    
+@tree.command(name="delete-all-reminders", description="Delete all reminders")
+async def delete_all_reminders(ctx):
+    await reminders.delete_all_reminders(ctx)
+    
+@tree.command(name="modify-reminder", description="Modify a specific reminder by its index. The fields you leave empty will remain unchanged")
+async def modify_reminder(ctx, index: int, new_date: str = None, new_time: str = None, new_message: str = None):
+    await reminders.modify_reminder(ctx, index, new_date, new_time, new_message)
 
 #endregion
 
@@ -166,6 +190,7 @@ async def on_ready():
     print(f"Logged in as \"{client.user.name}\"")
     print(f"ID: {client.user.id}")
     print('------')
+    client.loop.create_task(reminders.handle_reminders(client))
 
 @client.event
 async def on_message(message):
@@ -190,9 +215,9 @@ async def on_disconnect():
 async def on_voice_state_update(member, before, after):
     await music.process_voice_state_update(member, before, after, client)
     
-@client.event
-async def on_stop():
-    await music.on_stop()
+# @client.event
+# async def on_stop():
+#     await music.on_stop()
     
 @client.event
 async def on_member_join(member):
