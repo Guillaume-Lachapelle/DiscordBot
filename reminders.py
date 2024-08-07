@@ -30,41 +30,42 @@ async def handle_reminders(client):
                 with open('reminders.csv', 'r', encoding='utf-8') as csvfile:
                     reminder_reader = csv.reader(csvfile)
                     reminders = list(reminder_reader)
-                    for row in reminders[1:]:
-                        reminder_datetime = datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S")
-                        message = row[1]
-                        channel_id = int(row[2])
-                        
-                        # Calculate the time difference between now and the reminder time
-                        now = datetime.datetime.now()
-                        time_difference = (reminder_datetime - now).total_seconds()
-                        
-                        if time_difference > 0:
-                            if time_difference > 15 * 60:
-                                # Calculate the time difference for the 15-minute warning
-                                warning_time_difference = time_difference - 15 * 60
-                                
-                                # Wait until 15 minutes before the reminder time
-                                await asyncio.sleep(warning_time_difference)
-                                # Send the 15-minute warning
-                                channel = client.get_channel(channel_id)
-                                await channel.send(f"@everyone **Reminder:** `{message}` in 15 minutes!")
-                                
-                                # Wait until the actual reminder time
-                                await asyncio.sleep(15 * 60)
-                            else:
-                                # Wait until the actual reminder time
-                                await asyncio.sleep(time_difference)
+
+                for row in reminders[1:]:
+                    reminder_datetime = datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S")
+                    message = row[1]
+                    channel_id = int(row[2])
+                    
+                    # Calculate the time difference between now and the reminder time
+                    now = datetime.datetime.now()
+                    time_difference = (reminder_datetime - now).total_seconds()
+                    
+                    if time_difference > 0:
+                        if time_difference > 15 * 60:
+                            # Calculate the time difference for the 15-minute warning
+                            warning_time_difference = time_difference - 15 * 60
                             
-                            # Send the reminder message
+                            # Wait until 15 minutes before the reminder time
+                            await asyncio.sleep(warning_time_difference)
+                            # Send the 15-minute warning
                             channel = client.get_channel(channel_id)
-                            await channel.send(f"@everyone **Reminder:** `{message}`")
+                            await channel.send(f"@everyone **Reminder:** `{message}` in 15 minutes!")
                             
-                            # Remove the reminder from the CSV file
-                            reminders.remove(row)
-                            with open('reminders.csv', 'w', newline='', encoding='utf-8') as csvfile:
-                                reminder_writer = csv.writer(csvfile)
-                                reminder_writer.writerows(reminders)
+                            # Wait until the actual reminder time
+                            await asyncio.sleep(15 * 60)
+                        else:
+                            # Wait until the actual reminder time
+                            await asyncio.sleep(time_difference)
+                        
+                        # Send the reminder message
+                        channel = client.get_channel(channel_id)
+                        await channel.send(f"@everyone **Reminder:** `{message}`")
+                        
+                        # Remove the reminder from the CSV file
+                        reminders.remove(row)
+                        with open('reminders.csv', 'w', newline='', encoding='utf-8') as csvfile:
+                            reminder_writer = csv.writer(csvfile)
+                            reminder_writer.writerows(reminders)
             else:
                 # Create the CSV file if it doesn't exist
                 with open('reminders.csv', 'w', newline='', encoding='utf-8') as csvfile:
@@ -166,7 +167,7 @@ async def modify_reminder(ctx, index, new_date=None, new_time=None, new_message=
                 with open('reminders.csv', 'w', newline='', encoding='utf-8') as csvfile:
                     reminder_writer = csv.writer(csvfile)
                     reminder_writer.writerows(reminders)
-                await ctx.response.send_message(f"**Modified reminder:\nDate and Time: `{current_datetime.strftime('%Y-%m-%d %H:%M')}`\nMessage: `{new_message}`")
+                await ctx.response.send_message(f"**Modified reminder:**\nDate and Time: `{current_datetime.strftime('%Y-%m-%d %H:%M')}`\nMessage: `{new_message}`")
             else:
                 await ctx.response.send_message("Invalid index. Please provide a valid reminder index.")
         else:
