@@ -3,6 +3,7 @@ import asyncio
 import csv
 import os
 import atexit
+import discord
 
 client = None
 reminder_tasks = []
@@ -10,12 +11,12 @@ reminder_tasks = []
 #region atexit
 
 # Remove the reminders from the CSV file
-def delete_file_on_exit():
-    with open('reminders.csv', 'w', newline='', encoding='utf-8') as csvfile:
-        reminder_writer = csv.writer(csvfile)
-        reminder_writer.writerow(["datetime", "message", "channel_id"])
+# def delete_file_on_exit():
+#     with open('reminders.csv', 'w', newline='', encoding='utf-8') as csvfile:
+#         reminder_writer = csv.writer(csvfile)
+#         reminder_writer.writerow(["datetime", "message", "channel_id"])
 
-atexit.register(delete_file_on_exit)
+# atexit.register(delete_file_on_exit)
 
 #endregion
 
@@ -23,7 +24,7 @@ async def add_reminder(ctx, date, time, message):
     try:
         # Check if the date and time are in the correct format
         try:
-            reminder_datetime = datetime.datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+            reminder_datetime = datetime.datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M").astimezone()
         except ValueError:
             await ctx.response.send_message("Invalid date or time format. Please use **YYYY-MM-DD** for the date and **HH:MM** for the time.")
             return
@@ -31,20 +32,39 @@ async def add_reminder(ctx, date, time, message):
         # Write the reminder to a CSV file
         with open('reminders.csv', 'a', newline='', encoding='utf-8') as csvfile:
             reminder_writer = csv.writer(csvfile)
-            reminder_writer.writerow([reminder_datetime.strftime('%Y-%m-%d %H:%M'), message, ctx.channel.id])
+            reminder_writer.writerow([reminder_datetime.strftime('%Y-%m-%d %H:%M'), message, ctx.channel.id, ctx.guild.id])
             
             await ctx.response.send_message(f"**Reminder set:**\nMessage: `{message}`\nDate and Time: `{reminder_datetime.strftime('%Y-%m-%d %H:%M')}`")
             
+        # Create an event in the Discord server
+        guild = ctx.guild
+        event_name = f"Reminder: {message}"
+        event_description = f"Reminder set for {reminder_datetime.strftime('%Y-%m-%d %H:%M')}"
+        event_start_time = reminder_datetime
+        event_end_time = reminder_datetime + datetime.timedelta(hours=1)  # Set event duration to 1 hour
+        
+        await guild.create_scheduled_event(
+            name=event_name,
+            description=event_description,
+            start_time=event_start_time,
+            end_time=event_end_time,
+            entity_type=discord.EntityType.external,
+            privacy_level=discord.PrivacyLevel.guild_only,
+            location=guild.voice_channels[0].name  # Default voice channel
+        )
+        
         # Restart the reminder handling process
         await handle_reminders()
     except Exception as e:
-        await ctx.response.send_message("Could not set the reminder. Please try again.")
+        print(f"Error setting reminder: {e}")
+        if not ctx.response.is_done():
+            await ctx.response.send_message("Could not set the reminder. Please try again.")
         
 
-async def send_reminder(reminder_datetime, message, channel_id):
+async def send_reminder(reminder_datetime, message, channel_id, guild_id):
     global client
     try:
-        now = datetime.datetime.now()
+        now = datetime.datetime.now().astimezone()
         time_difference = (reminder_datetime - now).total_seconds()
         
         if time_difference > 0:
@@ -73,13 +93,13 @@ async def send_reminder(reminder_datetime, message, channel_id):
                 reminders = list(reminder_reader)
                 
             for index, row in enumerate(reminders[1:], start=1):
-                if row[0] == reminder_datetime.strftime('%Y-%m-%d %H:%M') and row[1] == message and int(row[2]) == channel_id:
+                if row[0] == reminder_datetime.strftime('%Y-%m-%d %H:%M') and row[1] == message and int(row[2]) == channel_id and int(row[3]) == guild_id:
                     reminders.pop(index)
                     break
 
             with open('reminders.csv', 'w', newline='', encoding='utf-8') as csvfile:
                 reminder_writer = csv.writer(csvfile)
-                reminder_writer.writerow(["datetime", "message", "channel_id"])
+                reminder_writer.writerow(["datetime", "message", "channel_id", "guild_id"])
                 reminder_writer.writerows(reminders[1:])
     except asyncio.CancelledError:
         # Handle task cancellation
@@ -88,7 +108,7 @@ async def send_reminder(reminder_datetime, message, channel_id):
         print(f"Error sending reminder: {e}")
 
 
-async def handle_reminders(bot = None):
+async def handle_reminders(bot=None):
     global reminder_tasks
     global client
     try:
@@ -106,12 +126,13 @@ async def handle_reminders(bot = None):
                 reminders = list(reminder_reader)
 
             for row in reminders[1:]:
-                reminder_datetime = datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M")
+                reminder_datetime = datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M").astimezone()
                 message = row[1]
                 channel_id = int(row[2])
+                guild_id = int(row[3])
                 
                 # Create a task for each reminder
-                task = asyncio.create_task(send_reminder(reminder_datetime, message, channel_id))
+                task = asyncio.create_task(send_reminder(reminder_datetime, message, channel_id, guild_id))
                 reminder_tasks.append(task)
             
             # Wait for all tasks to complete
@@ -121,7 +142,7 @@ async def handle_reminders(bot = None):
             # Create the CSV file if it doesn't exist
             with open('reminders.csv', 'w', newline='', encoding='utf-8') as csvfile:
                 reminder_writer = csv.writer(csvfile)
-                reminder_writer.writerow(["datetime", "message", "channel_id"])
+                reminder_writer.writerow(["datetime", "message", "channel_id", "guild_id"])
     except Exception as e:
         print(f"Error handling reminders: {e}")
 
@@ -133,8 +154,10 @@ async def list_reminders(ctx):
                 reminder_reader = csv.reader(csvfile)
                 reminders = list(reminder_reader)
                 
-            if len(reminders) > 1:
-                reminder_list = "\n".join([f"**{index}.** Date and Time: `{row[0]}`\nMessage: `{row[1]}`" for index, row in enumerate(reminders[1:], start=1)])
+            guild_reminders = [row for row in reminders[1:] if int(row[3]) == ctx.guild.id]
+            
+            if guild_reminders:
+                reminder_list = "\n".join([f"**{index}.** Date and Time: `{row[0]}`\nMessage: `{row[1]}`" for index, row in enumerate(guild_reminders, start=1)])
                 await ctx.response.send_message(f"**Upcoming Reminders:**\n{reminder_list}")
             else:
                 await ctx.response.send_message("No upcoming reminders.")
@@ -142,30 +165,51 @@ async def list_reminders(ctx):
             await ctx.response.send_message("No upcoming reminders.")
     except Exception as e:
         await ctx.response.send_message("Could not retrieve reminders. Please try again.")
+        print(f"Error retrieving reminders: {e}")
         
 
-async def delete_reminder(ctx, index):
+async def delete_reminder(ctx, nth_index, silent=False):
     try:
         if os.path.exists('reminders.csv'):
             with open('reminders.csv', 'r', encoding='utf-8') as csvfile:
                 reminder_reader = csv.reader(csvfile)
                 reminders = list(reminder_reader)
                 
-            if 1 <= index < len(reminders):
-                deleted_reminder = reminders.pop(index)
+            # Filter reminders for the current guild
+            guild_reminders = [row for row in reminders[1:] if int(row[3]) == ctx.guild.id]
+            
+            if 1 <= nth_index <= len(guild_reminders):
+                # Get the actual reminder to delete
+                deleted_reminder = guild_reminders[nth_index - 1]
+                
+                # Remove the reminder from the original list
+                reminders = [row for row in reminders if row != deleted_reminder]
+                
                 with open('reminders.csv', 'w', newline='', encoding='utf-8') as csvfile:
                     reminder_writer = csv.writer(csvfile)
                     reminder_writer.writerows(reminders)
-                await ctx.response.send_message(f"**Deleted reminder:**\nDate and Time: `{deleted_reminder[0]}`\nMessage: `{deleted_reminder[1]}`")
-                
-                # Restart the reminder handling process
-                await handle_reminders()
+                    
+                if not silent:
+                    await ctx.response.send_message(f"**Deleted reminder:**\nDate and Time: `{deleted_reminder[0]}`\nMessage: `{deleted_reminder[1]}`")
+                    
+                    # Delete the corresponding scheduled event
+                    guild = ctx.guild
+                    event_name = f"Reminder: {deleted_reminder[1]}"
+                    events = await guild.fetch_scheduled_events()
+                    for event in events:
+                        if event.name == event_name:
+                            await event.delete()
+                            break
+                    
+                    # Restart the reminder handling process
+                    await handle_reminders()
             else:
                 await ctx.response.send_message("Invalid index. Please provide a valid reminder index.")
         else:
             await ctx.response.send_message("No reminders to delete.")
     except Exception as e:
         await ctx.response.send_message("Could not delete reminder. Please try again.")
+        print(f"Error deleting reminder: {e}")
         
         
 async def delete_all_reminders(ctx):
@@ -175,10 +219,20 @@ async def delete_all_reminders(ctx):
                 reminder_reader = csv.reader(csvfile)
                 reminders = list(reminder_reader)
                 
-            for index in range(len(reminders) - 1, 0, -1):
-                await delete_reminder(ctx, index)
+            # Filter reminders for the current guild
+            guild_reminders = [row for row in reminders[1:] if int(row[3]) == ctx.guild.id]
+            
+            for reminder in guild_reminders:
+                await delete_reminder(ctx, guild_reminders.index(reminder) + 1, True)
                 
             await ctx.response.send_message("All reminders have been deleted.")
+            
+            # Delete all scheduled events for the guild
+            guild = ctx.guild
+            events = await guild.fetch_scheduled_events()
+            for event in events:
+                if event.name.startswith("Reminder:"):
+                    await event.delete()
             
             # Restart the reminder handling process
             await handle_reminders()
@@ -186,18 +240,23 @@ async def delete_all_reminders(ctx):
             await ctx.response.send_message("No reminders to delete.")
     except Exception as e:
         await ctx.response.send_message("Could not delete all reminders. Please try again.")
+        print(f"Error deleting all reminders: {e}")
         
         
-async def modify_reminder(ctx, index, new_date=None, new_time=None, new_message=None):
+async def modify_reminder(ctx, nth_index, new_date=None, new_time=None, new_message=None):
     try:
         if os.path.exists('reminders.csv'):
             with open('reminders.csv', 'r', encoding='utf-8') as csvfile:
                 reminder_reader = csv.reader(csvfile)
                 reminders = list(reminder_reader)
                 
-            if 1 <= index < len(reminders):
-                current_reminder = reminders[index]
-                current_datetime = datetime.datetime.strptime(current_reminder[0], "%Y-%m-%d %H:%M")
+            # Filter reminders for the current guild
+            guild_reminders = [row for row in reminders[1:] if int(row[3]) == ctx.guild.id]
+            
+            if 1 <= nth_index <= len(guild_reminders):
+                # Get the actual reminder to modify
+                current_reminder = guild_reminders[nth_index - 1]
+                current_datetime = datetime.datetime.strptime(current_reminder[0], "%Y-%m-%d %H:%M").astimezone()
                 
                 if new_date:
                     try:
@@ -217,11 +276,32 @@ async def modify_reminder(ctx, index, new_date=None, new_time=None, new_message=
                 
                 new_message = new_message if new_message else current_reminder[1]
                 
-                reminders[index] = [current_datetime.strftime('%Y-%m-%d %H:%M'), new_message, current_reminder[2]]
+                # Fetch the event name before modifying the CSV file
+                event_name = f"Reminder: {current_reminder[1]}"
+                
+                # Update the reminder in the original list
+                for index, row in enumerate(reminders):
+                    if row == current_reminder:
+                        reminders[index] = [current_datetime.strftime('%Y-%m-%d %H:%M'), new_message, current_reminder[2], current_reminder[3]]
+                        break
+                
                 with open('reminders.csv', 'w', newline='', encoding='utf-8') as csvfile:
                     reminder_writer = csv.writer(csvfile)
                     reminder_writer.writerows(reminders)
                 await ctx.response.send_message(f"**Modified reminder:**\nDate and Time: `{current_datetime.strftime('%Y-%m-%d %H:%M')}`\nMessage: `{new_message}`")
+                
+                # Modify the corresponding scheduled event
+                guild = ctx.guild
+                events = await guild.fetch_scheduled_events()
+                for event in events:
+                    if event.name == event_name:
+                        await event.edit(
+                            name=f"Reminder: {new_message}",
+                            description=f"Reminder set for {current_datetime.strftime('%Y-%m-%d %H:%M')}",
+                            start_time=current_datetime,
+                            end_time=current_datetime + datetime.timedelta(hours=1)
+                        )
+                        break
                 
                 # Restart the reminder handling process
                 await handle_reminders()
@@ -231,3 +311,4 @@ async def modify_reminder(ctx, index, new_date=None, new_time=None, new_message=
             await ctx.response.send_message("No reminders to modify.")
     except Exception as e:
         await ctx.response.send_message("Could not modify reminder. Please try again.")
+        print(f"Error modifying reminder: {e}")
