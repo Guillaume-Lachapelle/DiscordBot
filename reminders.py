@@ -20,7 +20,7 @@ reminder_tasks = []
 
 #endregion
 
-async def add_reminder(ctx, date, time, message):
+async def add_reminder(ctx, date, time, message, channel_name=None):
     try:
         # Check if the date and time are in the correct format
         try:
@@ -29,10 +29,21 @@ async def add_reminder(ctx, date, time, message):
             await ctx.response.send_message("Invalid date or time format. Please use **YYYY-MM-DD** for the date and **HH:MM** for the time.")
             return
         
+        # Determine the channel to send the reminder
+        if channel_name:
+            channel = discord.utils.get(ctx.guild.text_channels, name=channel_name)
+            if not channel:
+                await ctx.response.send_message(f"Channel `{channel_name}` not found. Please provide a valid channel name.")
+                return
+        else:
+            channel = discord.utils.get(ctx.guild.text_channels, name="reminders")
+            if not channel:
+                channel = ctx.guild.text_channels[0]
+        
         # Write the reminder to a CSV file
         with open('reminders.csv', 'a', newline='', encoding='utf-8') as csvfile:
             reminder_writer = csv.writer(csvfile)
-            reminder_writer.writerow([reminder_datetime.strftime('%Y-%m-%d %H:%M'), message, ctx.channel.id, ctx.guild.id])
+            reminder_writer.writerow([reminder_datetime.strftime('%Y-%m-%d %H:%M'), message, channel.id, ctx.guild.id])
         
         # Read and sort reminders
         with open('reminders.csv', 'r', encoding='utf-8') as csvfile:
@@ -46,7 +57,7 @@ async def add_reminder(ctx, date, time, message):
             reminder_writer = csv.writer(csvfile)
             reminder_writer.writerows(reminders)
         
-        await ctx.response.send_message(f"**Reminder set:**\nMessage: `{message}`\nDate and Time: `{reminder_datetime.strftime('%Y-%m-%d %H:%M')}`")
+        await ctx.response.send_message(f"**Reminder set:**\nMessage: `{message}`\nDate and Time: `{reminder_datetime.strftime('%Y-%m-%d %H:%M')}`\nChannel: `{channel.name}`")
         
         # Create an event in the Discord server
         guild = ctx.guild
@@ -169,7 +180,10 @@ async def list_reminders(ctx):
             guild_reminders = [row for row in reminders[1:] if int(row[3]) == ctx.guild.id]
             
             if guild_reminders:
-                reminder_list = "\n".join([f"**{index}.** Date and Time: `{row[0]}`\nMessage: `{row[1]}`" for index, row in enumerate(guild_reminders, start=1)])
+                reminder_list = "\n".join([
+                    f"**{index}.** Date and Time: `{row[0]}`\nMessage: `{row[1]}`\nChannel: `{ctx.guild.get_channel(int(row[2])).name}`"
+                    for index, row in enumerate(guild_reminders, start=1)
+                ])
                 await ctx.response.send_message(f"**Upcoming Reminders:**\n{reminder_list}")
             else:
                 await ctx.response.send_message("No upcoming reminders.")
@@ -255,11 +269,11 @@ async def delete_all_reminders(ctx):
         print(f"Error deleting all reminders: {e}")
         
         
-async def modify_reminder(ctx, nth_index, new_date=None, new_time=None, new_message=None):
+async def modify_reminder(ctx, nth_index, new_date=None, new_time=None, new_message=None, new_channel_name=None):
     try:
         # Check if at least one of the optional parameters is provided
-        if not new_date and not new_time and not new_message:
-            await ctx.response.send_message("Please provide at least one parameter to modify (new_date, new_time, new_message).")
+        if not new_date and not new_time and not new_message and not new_channel_name:
+            await ctx.response.send_message("Please provide at least one parameter to modify (new_date, new_time, new_message, new_channel_name).")
             return
         
         if os.path.exists('reminders.csv'):
@@ -293,6 +307,15 @@ async def modify_reminder(ctx, nth_index, new_date=None, new_time=None, new_mess
                 
                 new_message = new_message if new_message else current_reminder[1]
                 
+                # Determine the new channel to send the reminder
+                if new_channel_name:
+                    new_channel = discord.utils.get(ctx.guild.text_channels, name=new_channel_name)
+                    if not new_channel:
+                        await ctx.response.send_message(f"Channel `{new_channel_name}` not found. Please provide a valid channel name.")
+                        return
+                else:
+                    new_channel = client.get_channel(int(current_reminder[2]))
+                
                 # Fetch the event details before modifying the CSV file
                 event_name = f"Reminder: {current_reminder[1]}"
                 event_start_time = datetime.datetime.strptime(current_reminder[0], "%Y-%m-%d %H:%M").astimezone()
@@ -300,7 +323,7 @@ async def modify_reminder(ctx, nth_index, new_date=None, new_time=None, new_mess
                 # Update the reminder in the original list
                 for index, row in enumerate(reminders):
                     if row == current_reminder:
-                        reminders[index] = [current_datetime.strftime('%Y-%m-%d %H:%M'), new_message, current_reminder[2], current_reminder[3]]
+                        reminders[index] = [current_datetime.strftime('%Y-%m-%d %H:%M'), new_message, new_channel.id, current_reminder[3]]
                         break
                 
                 # Sort reminders by datetime
@@ -309,7 +332,7 @@ async def modify_reminder(ctx, nth_index, new_date=None, new_time=None, new_mess
                 with open('reminders.csv', 'w', newline='', encoding='utf-8') as csvfile:
                     reminder_writer = csv.writer(csvfile)
                     reminder_writer.writerows(reminders)
-                await ctx.response.send_message(f"**Modified reminder:**\nDate and Time: `{current_datetime.strftime('%Y-%m-%d %H:%M')}`\nMessage: `{new_message}`")
+                await ctx.response.send_message(f"**Modified reminder:**\nDate and Time: `{current_datetime.strftime('%Y-%m-%d %H:%M')}`\nMessage: `{new_message}`\nChannel: `{new_channel.name}`")
                 
                 # Modify the corresponding scheduled event
                 guild = ctx.guild
@@ -318,7 +341,7 @@ async def modify_reminder(ctx, nth_index, new_date=None, new_time=None, new_mess
                     if event.name == event_name and event.start_time == event_start_time:
                         await event.edit(
                             name=f"Reminder: {new_message}",
-                            description=f"Reminder set for {current_datetime.strftime('%Y-%m-%d %H:%M')}",
+                            description=f"Reminder set for {current_datetime.strftime('%Y-%m-%d %H:%M')} in {new_channel.name}",
                             start_time=current_datetime,
                             end_time=current_datetime + datetime.timedelta(hours=1)
                         )

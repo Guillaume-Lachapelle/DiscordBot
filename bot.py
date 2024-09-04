@@ -160,8 +160,8 @@ async def restart(ctx):
     await music.restart(ctx)
     
 @tree.command(name="set-reminder", description="Set a reminder for a specified date and time (format: YYYY-MM-DD HH:MM)")
-async def set_reminder(ctx, date: str, time: str, message: str):
-    await reminders.add_reminder(ctx, date, time, message)
+async def set_reminder(ctx, date: str, time: str, message: str, channel_name: str = None):
+    await reminders.add_reminder(ctx, date, time, message, channel_name)
     
 @tree.command(name="list-reminders", description="List all upcoming reminders")
 async def view_reminders(ctx):
@@ -176,8 +176,8 @@ async def delete_all_reminders(ctx):
     await reminders.delete_all_reminders(ctx)
     
 @tree.command(name="modify-reminder", description="Modify a specific reminder by its index. The fields you leave empty will remain unchanged")
-async def modify_reminder(ctx, index: int, new_date: str = None, new_time: str = None, new_message: str = None):
-    await reminders.modify_reminder(ctx, index, new_date, new_time, new_message)
+async def modify_reminder(ctx, index: int, new_date: str = None, new_time: str = None, new_message: str = None, new_channel_name: str = None):
+    await reminders.modify_reminder(ctx, index, new_date, new_time, new_message, new_channel_name)
 
 #endregion
 
