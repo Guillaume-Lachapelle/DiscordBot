@@ -2,23 +2,10 @@ import datetime
 import asyncio
 import csv
 import os
-import atexit
 import discord
 
 client = None
 reminder_tasks = []
-
-#region atexit
-
-# Remove the reminders from the CSV file
-# def delete_file_on_exit():
-#     with open('reminders.csv', 'w', newline='', encoding='utf-8') as csvfile:
-#         reminder_writer = csv.writer(csvfile)
-#         reminder_writer.writerow(["datetime", "message", "channel_id"])
-
-# atexit.register(delete_file_on_exit)
-
-#endregion
 
 async def add_reminder(ctx, date, time, title, message, channel_name=None):
     try:
