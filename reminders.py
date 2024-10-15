@@ -54,15 +54,17 @@ async def add_reminder(ctx, date, time, title, message, channel_name=None):
         event_description = f"Reminder set for {reminder_datetime.strftime('%Y-%m-%d %H:%M')}\n {message}"
         event_start_time = reminder_datetime
         event_end_time = reminder_datetime + datetime.timedelta(hours=1)  # Set event duration to 1 hour
+        # Set the event to point directly to a voice channel
+        voice_channel = guild.voice_channels[0] # Default voice channel
         
         await guild.create_scheduled_event(
             name=event_name,
             description=event_description,
             start_time=event_start_time,
             end_time=event_end_time,
-            entity_type=discord.EntityType.external,
+            entity_type=discord.EntityType.voice,
             privacy_level=discord.PrivacyLevel.guild_only,
-            location=guild.voice_channels[0].name  # Default voice channel
+            channel=voice_channel
         )
         
         # Restart the reminder handling process
