@@ -4,20 +4,24 @@
 
 import discord
 from typing import List
+from datetime import timedelta
 
 #endregion
 
 
 #region Commands
 
-async def create_poll(ctx: discord.Interaction, question: str, options: List[str]) -> None:
+async def create_poll(ctx: discord.Interaction, question: str, options: List[str], allow_multiselect: bool = False, duration_hours: int = 24) -> None:
     """Create a poll with given question and options.
     
     Args:
         ctx: Discord context
         question: Poll question
         options: List of poll options
+        allow_multiselect: Whether to allow multiple selections
+        duration_hours: Poll duration in hours (default: 24)
     """
+    
     await ctx.response.defer()
 
     question = question.strip() if question else ""
@@ -36,10 +40,12 @@ async def create_poll(ctx: discord.Interaction, question: str, options: List[str
     if len(question) > 256:
         await ctx.followup.send("Please keep the question under 256 characters.")
         return
-    reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
-    embed = discord.Embed(description="\n".join([f"{reactions[idx]} {option}" for idx, option in enumerate(clean_options)]))
-    poll = await ctx.followup.send(f":bar_chart: **{question}**", embed=embed)
-    for reaction in reactions[:len(clean_options)]:
-        await poll.add_reaction(reaction)
+    
+    # Create native Discord poll with configurable duration
+    poll = discord.Poll(question=question, duration=timedelta(hours=duration_hours), multiple=allow_multiselect)
+    for option in clean_options:
+        poll.add_answer(text=option)
+    
+    await ctx.followup.send(poll=poll)
 
 #endregion

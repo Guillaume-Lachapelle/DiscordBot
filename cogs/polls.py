@@ -5,7 +5,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from typing import Optional
+from typing import Optional, Literal
 
 import poll_commands
 
@@ -37,7 +37,9 @@ class PollCog(commands.Cog):
         option7="Seventh option (optional)",
         option8="Eighth option (optional)",
         option9="Ninth option (optional)",
-        option10="Tenth option (optional)"
+        option10="Tenth option (optional)",
+        allow_multiselect="Allow multiple selections (optional)",
+        duration="Poll duration (default: 24 hours)"
     )
     async def poll(
         self, 
@@ -52,7 +54,9 @@ class PollCog(commands.Cog):
         option7: Optional[str] = None, 
         option8: Optional[str] = None, 
         option9: Optional[str] = None, 
-        option10: Optional[str] = None
+        option10: Optional[str] = None,
+        allow_multiselect: bool = False,
+        duration: Literal["24 hours", "3 days", "7 days"] = "24 hours"
     ):
         """Create a poll with up to 10 options.
 
@@ -69,14 +73,24 @@ class PollCog(commands.Cog):
             option8: Eighth option (optional).
             option9: Ninth option (optional).
             option10: Tenth option (optional).
+            allow_multiselect: Whether to allow multiple selections.
+            duration: Poll duration (default: 24 hours).
         """
+        # Convert duration string to hours
+        duration_map = {
+            "24 hours": 24,
+            "3 days": 72,
+            "7 days": 168
+        }
+        duration_hours = duration_map[duration]
+        
         options = [
             option for option in (
                 option1, option2, option3, option4, option5, 
                 option6, option7, option8, option9, option10
             ) if option is not None
         ]
-        await poll_commands.create_poll(interaction, question, options)
+        await poll_commands.create_poll(interaction, question, options, allow_multiselect=allow_multiselect, duration_hours=duration_hours)
     
     #endregion
 

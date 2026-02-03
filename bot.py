@@ -23,6 +23,13 @@ import asyncio
 
 logger = logging.getLogger(__name__)
 
+# Configure logging to show DEBUG and above
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] [%(levelname)s] %(name)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
 # Load environment variables
 load_dotenv()
 
