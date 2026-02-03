@@ -30,7 +30,6 @@ load_dotenv()
 _required_env_vars = {
     'DISCORD_TOKEN': 'Discord bot token',
     'GEMINI_API_KEY': 'Google Gemini API key',
-    'ALPHA_VANTAGE_API_KEY': 'Alpha Vantage API key',
     'YOUTUBE_API_KEY': 'YouTube Data API key'
 }
 
@@ -72,7 +71,6 @@ async def load_cogs():
         'cogs.general',
         'cogs.music',
         'cogs.ai',
-        'cogs.stocks',
         'cogs.reminders',
         'cogs.polls',
         'cogs.events'

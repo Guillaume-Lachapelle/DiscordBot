@@ -7,7 +7,6 @@ This is a Discord bot built with Python and discord.py. It provides slash comman
 - **Music Playback**: YouTube audio streaming with queue management (play, queue, pause, resume, skip, stop, swap, remove, restart)
 - **Reminders**: Schedule notifications with date/time, list active reminders, modify or delete them
 - **AI Responses**: Ask questions using Google Gemini with model fallback support
-- **Stock Data**: Look up ticker symbols and retrieve historical data via Alpha Vantage
 - **Polls**: Create polls with up to 10 options and reaction-based voting
 - **Image Processing**: Remove backgrounds from images using rembg
 
@@ -24,7 +23,7 @@ This is a Discord bot built with Python and discord.py. It provides slash comman
 
 - Python 3.10+ (tested with Python 3.12)
 - Discord bot token
-- API keys for Gemini, Alpha Vantage, and YouTube Data API
+- API keys for Gemini and YouTube Data API
 
 ## Setup
 
@@ -35,7 +34,6 @@ This is a Discord bot built with Python and discord.py. It provides slash comman
 
 	DISCORD_TOKEN=your_discord_bot_token
 	GEMINI_API_KEY=your_gemini_api_key
-	ALPHA_VANTAGE_API_KEY=your_alpha_vantage_api_key
 	YOUTUBE_API_KEY=your_youtube_api_key
 
 4. Run the bot:
@@ -98,10 +96,6 @@ To have the bot automatically start when Windows boots (even when locked):
 - /modify-reminder
 - /delete-reminder
 - /delete-all-reminders
-
-### Stocks
-- /stock-ticker
-- /stock-info
 
 ### Polls
 - /poll
