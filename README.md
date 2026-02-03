@@ -50,7 +50,7 @@ To have the bot automatically start when Windows boots (even when locked):
 3. Open Task Scheduler (`Win + R`, type `taskschd.msc`)
 4. Create a new task with these settings:
    - **General Tab:**
-     - Name: `Discord Bot - ChadBot`
+     - Name: `Discord Bot`
      - Select "Run whether user is logged on or not"
      - Check "Run with highest privileges"
    - **Triggers Tab:**
