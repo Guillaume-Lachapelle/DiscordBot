@@ -1,26 +1,66 @@
+"""Reminder command handlers - Create, list, modify, and delete reminders."""
+
+#region Imports
+
 import datetime
 import asyncio
 import csv
 import os
+import logging
+from typing import Optional
 import discord
+from shared.error_helpers import send_error_followup
 
-client = None
-reminder_tasks = []
+#endregion
 
-async def add_reminder(ctx, date, time, title, message, channel_name=None):
+
+#region Setup
+
+_client = None
+_reminder_tasks = []
+
+logger = logging.getLogger(__name__)
+
+#endregion
+
+
+#region Commands
+
+async def add_reminder(ctx: discord.Interaction, date: str, time: str, title: str, message: str, channel_name: Optional[str] = None) -> None:
+    """Add a new reminder with scheduled time and channel.
+    
+    Args:
+        ctx: Discord context
+        date: Reminder date (YYYY-MM-DD format)
+        time: Reminder time (HH:MM format)
+        title: Reminder title
+        message: Reminder message
+        channel_name: Optional channel name for reminder
+    """
     try:
+        if not title.strip():
+            await ctx.response.send_message("Please enter a non-empty title.")
+            return
+        if not message.strip():
+            await ctx.response.send_message("Please enter a non-empty message.")
+            return
+
         # Check if the date and time are in the correct format
         try:
             reminder_datetime = datetime.datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M").astimezone()
         except ValueError:
-            await ctx.response.send_message("Invalid date or time format. Please use **YYYY-MM-DD** for the date and **HH:MM** for the time.")
+            await ctx.response.send_message("Please enter a valid date/time: **YYYY-MM-DD** and **HH:MM**.")
+            return
+
+        if reminder_datetime <= datetime.datetime.now().astimezone():
+            await ctx.response.send_message("Please choose a future date/time for the reminder.")
             return
         
         # Determine the channel to send the reminder
         if channel_name:
             channel = discord.utils.get(ctx.guild.text_channels, name=channel_name)
             if not channel:
-                await ctx.response.send_message(f"Channel `{channel_name}` not found. Please provide a valid channel name.")
+                await ctx.response.send_message(f"Channel `{channel_name}` not found. Please enter a valid channel name.")
                 return
         else:
             channel = discord.utils.get(ctx.guild.text_channels, name="reminders")
@@ -55,7 +95,7 @@ async def add_reminder(ctx, date, time, title, message, channel_name=None):
         event_start_time = reminder_datetime
         event_end_time = reminder_datetime + datetime.timedelta(hours=1)  # Set event duration to 1 hour
         # Set the event to point directly to a voice channel
-        voice_channel = guild.voice_channels[0] # Default voice channel
+        voice_channel = guild.voice_channels[0]  # Default voice channel
         
         await guild.create_scheduled_event(
             name=event_name,
@@ -70,13 +110,14 @@ async def add_reminder(ctx, date, time, title, message, channel_name=None):
         # Restart the reminder handling process
         await handle_reminders()
     except Exception as e:
-        print(f"Error setting reminder: {e}")
+        logger.exception("Error setting reminder")
         if not ctx.response.is_done():
             await ctx.response.send_message("Could not set the reminder. Please try again.")
         
 
-async def send_reminder(reminder_datetime, title, message, channel_id, guild_id):
-    global client
+async def send_reminder(reminder_datetime: datetime.datetime, title: str, message: str, channel_id: int, guild_id: int) -> None:
+    """Send a scheduled reminder at the specified time."""
+    global _client
     try:
         now = datetime.datetime.now().astimezone()
         time_difference = (reminder_datetime - now).total_seconds()
@@ -89,7 +130,7 @@ async def send_reminder(reminder_datetime, title, message, channel_id, guild_id)
                 # Wait until 15 minutes before the reminder time
                 await asyncio.sleep(warning_time_difference)
                 # Send the 15-minute warning
-                channel = client.get_channel(channel_id)
+                channel = _client.get_channel(channel_id)
                 await channel.send(f"@everyone **Reminder:** `{title}` in 15 minutes!")
                 
                 # Wait until the actual reminder time
@@ -99,7 +140,7 @@ async def send_reminder(reminder_datetime, title, message, channel_id, guild_id)
                 await asyncio.sleep(time_difference)
             
             # Send the reminder message
-            channel = client.get_channel(channel_id)
+            channel = _client.get_channel(channel_id)
             await channel.send(f"@everyone **Reminder:** `{title}`\n`{message}`")
             # Delete the reminder from the CSV file
             with open('reminders.csv', 'r', newline='', encoding='utf-8') as csvfile:
@@ -119,20 +160,21 @@ async def send_reminder(reminder_datetime, title, message, channel_id, guild_id)
         # Handle task cancellation
         pass
     except Exception as e:
-        print(f"Error sending reminder: {e}")
+        logger.exception("Error sending reminder")
 
 
-async def handle_reminders(bot=None):
-    global reminder_tasks
-    global client
+async def handle_reminders(bot: Optional[discord.Client] = None) -> None:
+    """Initialize and manage all scheduled reminders."""
+    global _reminder_tasks
+    global _client
     try:
         if bot:
-            client = bot
+            _client = bot
         if os.path.exists('reminders.csv'):
             # Cancel any existing reminder tasks
-            for task in reminder_tasks:
+            for task in _reminder_tasks:
                 task.cancel()
-            reminder_tasks = []
+            _reminder_tasks = []
 
             # Read reminders from the CSV file
             with open('reminders.csv', 'r', encoding='utf-8') as csvfile:
@@ -148,10 +190,10 @@ async def handle_reminders(bot=None):
                 
                 # Create a task for each reminder
                 task = asyncio.create_task(send_reminder(reminder_datetime, title, message, channel_id, guild_id))
-                reminder_tasks.append(task)
+                _reminder_tasks.append(task)
             
             # Wait for all tasks to complete
-            await asyncio.gather(*reminder_tasks, return_exceptions=True)
+            await asyncio.gather(*_reminder_tasks, return_exceptions=True)
             
         else:
             # Create the CSV file if it doesn't exist
@@ -159,10 +201,11 @@ async def handle_reminders(bot=None):
                 reminder_writer = csv.writer(csvfile)
                 reminder_writer.writerow(["datetime", "title", "message", "channel_id", "guild_id"])
     except Exception as e:
-        print(f"Error handling reminders: {e}")
+        logger.exception("Error handling reminders")
 
             
-async def list_reminders(ctx):
+async def list_reminders(ctx: discord.Interaction) -> None:
+    """List all reminders for the current guild."""
     try:
         if os.path.exists('reminders.csv'):
             with open('reminders.csv', 'r', encoding='utf-8') as csvfile:
@@ -182,12 +225,17 @@ async def list_reminders(ctx):
         else:
             await ctx.response.send_message("No upcoming reminders.")
     except Exception as e:
-        await ctx.response.send_message("Could not retrieve reminders. Please try again.")
-        print(f"Error retrieving reminders: {e}")
+        await send_error_followup(ctx, "retrieve reminders")
+        logger.exception("Error retrieving reminders")
         
 
-async def delete_reminder(ctx, nth_index):
+async def delete_reminder(ctx: discord.Interaction, nth_index: int) -> None:
+    """Delete a reminder by index."""
     try:
+        if nth_index < 1:
+            await ctx.response.send_message("Please enter a valid reminder number (1 or higher).")
+            return
+
         if os.path.exists('reminders.csv'):
             with open('reminders.csv', 'r', encoding='utf-8') as csvfile:
                 reminder_reader = csv.reader(csvfile)
@@ -225,11 +273,12 @@ async def delete_reminder(ctx, nth_index):
         else:
             await ctx.response.send_message("No reminders to delete.")
     except Exception as e:
-        await ctx.response.send_message("Could not delete reminder. Please try again.")
-        print(f"Error deleting reminder: {e}")
+        await send_error_followup(ctx, "delete that reminder")
+        logger.exception("Error deleting reminder")
         
         
-async def delete_all_reminders(ctx):
+async def delete_all_reminders(ctx: discord.Interaction) -> None:
+    """Delete all reminders for the current guild."""
     try:
         if os.path.exists('reminders.csv'):
             with open('reminders.csv', 'r', encoding='utf-8') as csvfile:
@@ -257,17 +306,37 @@ async def delete_all_reminders(ctx):
         else:
             await ctx.response.send_message("No reminders to delete.")
     except Exception as e:
-        await ctx.response.send_message("Could not delete all reminders. Please try again.")
-        print(f"Error deleting all reminders: {e}")
+        await send_error_followup(ctx, "delete all reminders")
+        logger.exception("Error deleting all reminders")
         
         
-async def modify_reminder(ctx, nth_index, new_date=None, new_time=None, new_title=None, new_message=None, new_channel_name=None):
+async def modify_reminder(
+    ctx: discord.Interaction,
+    nth_index: int,
+    new_date: Optional[str] = None,
+    new_time: Optional[str] = None,
+    new_title: Optional[str] = None,
+    new_message: Optional[str] = None,
+    new_channel_name: Optional[str] = None,
+) -> None:
+    """Modify an existing reminder by index."""
     try:
+        if nth_index < 1:
+            await ctx.response.send_message("Please enter a valid reminder number (1 or higher).")
+            return
+
         # Check if at least one of the optional parameters is provided
         if not new_date and not new_time and not new_title and not new_message and not new_channel_name:
-            await ctx.response.send_message("Please provide at least one parameter to modify (new_date, new_time, new_title, new_message, new_channel_name).")
+            await ctx.response.send_message("Please provide at least one field to modify (date, time, title, message, or channel).")
             return
-        
+
+        if new_title is not None and not new_title.strip():
+            await ctx.response.send_message("Please enter a non-empty title.")
+            return
+        if new_message is not None and not new_message.strip():
+            await ctx.response.send_message("Please enter a non-empty message.")
+            return
+
         if os.path.exists('reminders.csv'):
             with open('reminders.csv', 'r', encoding='utf-8') as csvfile:
                 reminder_reader = csv.reader(csvfile)
@@ -286,7 +355,7 @@ async def modify_reminder(ctx, nth_index, new_date=None, new_time=None, new_titl
                         new_date_obj = datetime.datetime.strptime(new_date, "%Y-%m-%d")
                         current_datetime = current_datetime.replace(year=new_date_obj.year, month=new_date_obj.month, day=new_date_obj.day)
                     except ValueError:
-                        await ctx.response.send_message("Invalid date format. Please use **YYYY-MM-DD** for the date.")
+                        await ctx.response.send_message("Please enter a valid date: **YYYY-MM-DD**.")
                         return
                 
                 if new_time:
@@ -294,8 +363,12 @@ async def modify_reminder(ctx, nth_index, new_date=None, new_time=None, new_titl
                         new_time_obj = datetime.datetime.strptime(new_time, "%H:%M")
                         current_datetime = current_datetime.replace(hour=new_time_obj.hour, minute=new_time_obj.minute)
                     except ValueError:
-                        await ctx.response.send_message("Invalid time format. Please use **HH:MM** for the time.")
+                        await ctx.response.send_message("Please enter a valid time: **HH:MM**.")
                         return
+
+                if current_datetime <= datetime.datetime.now().astimezone():
+                    await ctx.response.send_message("Please choose a future date/time for the reminder.")
+                    return
                 
                 new_title = new_title if new_title else current_reminder[1]
                 new_message = new_message if new_message else current_reminder[2]
@@ -304,10 +377,10 @@ async def modify_reminder(ctx, nth_index, new_date=None, new_time=None, new_titl
                 if new_channel_name:
                     new_channel = discord.utils.get(ctx.guild.text_channels, name=new_channel_name)
                     if not new_channel:
-                        await ctx.response.send_message(f"Channel `{new_channel_name}` not found. Please provide a valid channel name.")
+                        await ctx.response.send_message(f"Channel `{new_channel_name}` not found. Please enter a valid channel name.")
                         return
                 else:
-                    new_channel = client.get_channel(int(current_reminder[3]))
+                    new_channel = _client.get_channel(int(current_reminder[3]))
                 
                 # Fetch the event details before modifying the CSV file
                 event_name = f"Reminder: {current_reminder[1]}"
@@ -350,5 +423,7 @@ async def modify_reminder(ctx, nth_index, new_date=None, new_time=None, new_titl
         else:
             await ctx.response.send_message("No reminders to modify.")
     except Exception as e:
-        await ctx.response.send_message("Could not modify reminder. Please try again.")
-        print(f"Error modifying reminder: {e}")
+        await send_error_followup(ctx, "modify that reminder")
+        logger.exception("Error modifying reminder")
+
+#endregion

@@ -1,0 +1,23 @@
+# Discord Bot Dependencies
+# Python 3.10+ required (tested with Python 3.12)
+
+# Discord API
+discord.py==2.6.3
+
+# Environment Variables
+python-dotenv==1.0.1
+
+# YouTube Integration
+google-api-python-client==2.181.0
+pytubefix==9.5.1
+
+# AI/Gemini Integration
+google-generativeai==0.8.5
+
+# Image Processing
+rembg==2.0.56
+Pillow==10.3.0
+
+# Stock Data
+alpha-vantage==2.3.1
+pandas>=2.0.0

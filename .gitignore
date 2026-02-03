@@ -1,4 +1,12 @@
 *.env
 /__pycache__
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
 bot_old.py
 reminders.csv
+TASK_SCHEDULER_SETUP.md
+start_bot.bat
+/downloads
