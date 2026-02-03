@@ -85,37 +85,5 @@ async def generate_response(message: str, model: Optional[Any] = None) -> str:
     # If all models fail
     error_message = f"An unexpected error occurred: {last_error}" if last_error else "All available models failed."
     return f"Could not generate response. {error_message} Please try again later."
-
-
-# TODO: To be removed once Gemini image generation is implemented.
-# Use the GPT-3 API to generate a response to a message
-# async def generate_response(message):
-#     try:
-#         model_engine = "davinci"
-#         prompt = (f"{message}\n")
-#         completions = openai.Completion.create(
-#             engine=model_engine,
-#             prompt=prompt,
-#             max_tokens=1024,
-#             n=1,
-#             stop=None,
-#             temperature=0.5,
-#         )
-#         message = completions.choices[0].text
-#         return message
-#     except Exception as e:
-#         return "Could not generate response. Please try again."
-
-# # Use the openai API to generate an image
-# async def generate_image(message):
-#     try:
-#         # Use DALL-E to generate the image
-#         response = openai.Image.create(
-#         model="image-alpha-001",
-#         prompt=message,
-#         )
-#         return response.data[0]['url']
-#     except Exception as e:
-#         return "Could not generate image. Please try again."
     
 #endregion

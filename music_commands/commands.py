@@ -14,7 +14,7 @@ from shared.config import BotConfig
 from .state import state
 from .helpers import (
     get_youtube_song, get_video_title, _cleanup_audio_file,
-    _is_playing, _is_connected, _is_paused, _send_error
+    _is_playing, _is_connected, _is_paused
 )
 from shared.error_helpers import send_error_followup, send_error_message
 
@@ -254,7 +254,7 @@ async def clear_playlist(ctx: discord.Interaction) -> None:
         await ctx.response.send_message("Playlist cleared.")
     except Exception as e:
         logger.exception("Error clearing playlist")
-        await _send_error(ctx, "clear the playlist")
+        await send_error_followup(ctx, "clear the playlist")
         return
     
 # Display the playlist
@@ -272,7 +272,7 @@ async def display_playlist(ctx: discord.Interaction) -> None:
         await ctx.response.send_message(playlist_string)
     except Exception as e:
         logger.exception("Error displaying playlist")
-        await _send_error(ctx, "display the playlist")
+        await send_error_followup(ctx, "display the playlist")
         return
 
 # Get the playlist as a string
@@ -307,7 +307,7 @@ async def pause(ctx: discord.Interaction) -> None:
         await ctx.response.send_message("Song paused.")
     except Exception as e:
         logger.exception("Error pausing song")
-        await _send_error(ctx, "pause the song")
+        await send_error_followup(ctx, "pause the song")
         return
     
 # Resume the current song
@@ -330,7 +330,7 @@ async def resume(ctx: discord.Interaction) -> None:
             return
     except Exception as e:
         logger.exception("Error resuming song")
-        await _send_error(ctx, "resume the song")
+        await send_error_followup(ctx, "resume the song")
         return
     
 # Skip the current song
@@ -355,7 +355,7 @@ async def skip(ctx: discord.Interaction) -> None:
             return
     except Exception as e:
         logger.exception("Error skipping song")
-        await _send_error(ctx, "skip the song")
+        await send_error_followup(ctx, "skip the song")
         return
     
 # Stop playing music, clear the playlist, and disconnect from the voice channel
@@ -377,7 +377,7 @@ async def stop(ctx: discord.Interaction) -> None:
         await ctx.response.send_message("Music stopped. The playlist has been cleared.")
     except Exception as e:
         logger.exception("Error stopping music")
-        await _send_error(ctx, "stop the music")
+        await send_error_followup(ctx, "stop the music")
         return
     
 async def swap(ctx: discord.Interaction, index1: int, index2: int) -> None:
@@ -407,7 +407,7 @@ async def swap(ctx: discord.Interaction, index1: int, index2: int) -> None:
         await ctx.response.send_message(message)
     except Exception as e:
         logger.exception("Error swapping songs")
-        await _send_error(ctx, "swap the songs")
+        await send_error_followup(ctx, "swap the songs")
         return
     
 async def remove(ctx: discord.Interaction, index: int) -> None:
@@ -433,7 +433,7 @@ async def remove(ctx: discord.Interaction, index: int) -> None:
         await ctx.response.send_message(message)
     except Exception as e:
         logger.exception("Error removing song")
-        await _send_error(ctx, "remove the song")
+        await send_error_followup(ctx, "remove the song")
         return
     
 async def restart(ctx: discord.Interaction) -> None:
@@ -458,7 +458,7 @@ async def restart(ctx: discord.Interaction) -> None:
         await ctx.response.send_message("Song restarting... Please wait...")
     except Exception as e:
         logger.exception("Error restarting song")
-        await _send_error(ctx, "restart the song")
+        await send_error_followup(ctx, "restart the song")
         return
 
 #endregion
