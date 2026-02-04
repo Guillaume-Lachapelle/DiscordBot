@@ -45,7 +45,8 @@ class GeneralCog(commands.Cog):
         """
         command_list = []
         for command in self.bot.tree.get_commands():
-            command_list.append(f"`/{command.name}` - {command.description}")
+            if command.name != "sync" and command.name != "ping":
+                command_list.append(f"`/{command.name}` - {command.description}")
         message = "The following commands are available:\n\n" + "\n".join(command_list)
         await interaction.response.send_message(message)
     

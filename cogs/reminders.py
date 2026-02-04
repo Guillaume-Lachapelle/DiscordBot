@@ -25,7 +25,7 @@ class ReminderCog(commands.Cog):
     
     #region Commands
     
-    @app_commands.command(name="set-reminder", description="Set a reminder for a specified date and time (format: YYYY-MM-DD HH:MM)")
+    @app_commands.command(name="set-reminder", description="Set a reminder for a specified date and time")
     @app_commands.describe(
         date="Date in YYYY-MM-DD format",
         time="Time in HH:MM (24-hour) format",
