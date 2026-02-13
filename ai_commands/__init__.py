@@ -2,13 +2,16 @@
 
 #region Imports
 
-from .commands import generate_response, FALLBACK_MODELS
+from .commands import FALLBACK_MODELS, generate_response
 
 #endregion
 
 
 #region Exports
 
-__all__ = ['generate_response', 'FALLBACK_MODELS']
+__all__ = [
+	'FALLBACK_MODELS',
+	'generate_response',
+]
 
 #endregion

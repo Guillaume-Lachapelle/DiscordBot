@@ -5,6 +5,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+from shared.error_helpers import send_user_message
 
 #endregion
 
@@ -23,6 +24,7 @@ class GeneralCog(commands.Cog):
     #region Commands
     
     @app_commands.command(name="sync", description="Syncs the bot's commands with the server")
+    @app_commands.checks.has_permissions(administrator=True)
     async def sync(self, interaction: discord.Interaction):
         """Sync slash commands to the server.
 
@@ -30,12 +32,27 @@ class GeneralCog(commands.Cog):
             interaction: Discord interaction context.
         """
         try:
-            await interaction.response.send_message("Syncing commands... Please wait...")
-            await self.bot.tree.sync()
-            await interaction.followup.send("Sync complete!")
+            await interaction.response.defer(ephemeral=True)
+            synced = await self.bot.tree.sync(guild=None)
+            await interaction.followup.send(
+                f"Global sync complete ({len(synced)} commands).",
+                ephemeral=True,
+            )
         except Exception as e:
-            await interaction.followup.send(f"Sync failed: {e}")
-    
+            await interaction.followup.send(f"Sync failed: {e}", ephemeral=True)
+
+    @sync.error
+    async def sync_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        """Provide a friendly error when non-admins try to use /sync."""
+        if isinstance(error, app_commands.MissingPermissions):
+            await send_user_message(
+                "You need Administrator permission to use `/sync`.",
+                ctx=interaction,
+                ephemeral=True,
+            )
+            return
+        raise error
+
     @app_commands.command(name="help", description="Displays all the available commands with a description of each one")
     async def help(self, interaction: discord.Interaction):
         """Send the list of available commands.
@@ -44,9 +61,15 @@ class GeneralCog(commands.Cog):
             interaction: Discord interaction context.
         """
         command_list = []
-        for command in self.bot.tree.get_commands():
-            if command.name != "sync" and command.name != "ping":
-                command_list.append(f"`/{command.name}` - {command.description}")
+        for command in self.bot.tree.walk_commands():
+            if isinstance(command, app_commands.Group):
+                continue
+            if command.qualified_name in {"help", "ping", "sync"}:
+                continue
+            command_list.append(
+                f"`/{command.qualified_name}` - {command.description}"
+            )
+        command_list.sort()
         message = "The following commands are available:\n\n" + "\n".join(command_list)
         await interaction.response.send_message(message)
     
@@ -57,18 +80,7 @@ class GeneralCog(commands.Cog):
         Args:
             interaction: Discord interaction context.
         """
-        await interaction.response.send_message("Pong!")
-    
-    @app_commands.command(name="rembg", description="Removes the background from an image")
-    async def rembg(self, interaction: discord.Interaction):
-        """Explain how to use the image background removal command.
-
-        Args:
-            interaction: Discord interaction context.
-        """
-        await interaction.response.send_message(
-            "To process attachments, please use the command `!rembg` and send the image as an attachment."
-        )
+        await interaction.response.send_message("Pong!", ephemeral=True)
     
     #endregion
 

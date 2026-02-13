@@ -2,7 +2,7 @@
 
 #region Imports
 
-from ..state import state
+from ..state import GuildMusicState
 
 #endregion
 
@@ -10,7 +10,7 @@ from ..state import state
 #region Functions
 
 
-def _is_playing() -> bool:
+def _is_playing(state: GuildMusicState) -> bool:
     """Check if the voice client is currently playing.
     
     Returns:
@@ -19,7 +19,7 @@ def _is_playing() -> bool:
     return state.voice_client is not None and state.voice_client.is_playing()
 
 
-def _is_connected() -> bool:
+def _is_connected(state: GuildMusicState) -> bool:
     """Check if the voice client is connected to a voice channel.
     
     Returns:
@@ -28,7 +28,7 @@ def _is_connected() -> bool:
     return state.voice_client is not None and state.voice_client.is_connected()
 
 
-def _is_paused() -> bool:
+def _is_paused(state: GuildMusicState) -> bool:
     """Check if the voice client is paused.
     
     Returns:

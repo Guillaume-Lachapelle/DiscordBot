@@ -2,13 +2,13 @@
 
 #region Imports
 
-from .commands import handle_remove_background, remove_background
+from .commands import remove_background_bytes
 
 #endregion
 
 
 #region Exports
 
-__all__ = ['handle_remove_background', 'remove_background']
+__all__ = ['remove_background_bytes']
 
 #endregion

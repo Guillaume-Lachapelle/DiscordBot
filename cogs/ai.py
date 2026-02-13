@@ -9,8 +9,9 @@ from typing import Optional
 import logging
 
 import ai_commands
-from shared.error_helpers import send_error_followup
+from shared.error_helpers import send_user_message
 from shared.config import BotConfig
+from shared.pagination import paginate_text, send_paginated_message
 
 #endregion
 
@@ -26,7 +27,7 @@ QUESTION_MODEL_CHOICES = [
 #endregion
 
 
-class AICog(commands.Cog):
+class AICog(commands.GroupCog, name="ai", description="AI commands"):
     """AI-powered question answering commands."""
     
     def __init__(self, bot: commands.Bot):
@@ -39,7 +40,10 @@ class AICog(commands.Cog):
     
     #region Commands
     
-    @app_commands.command(name="question", description="Ask a question and the bot will try to answer it")
+    @app_commands.command(
+        name="question",
+        description="Ask a question and the bot will try to answer it",
+    )
     @app_commands.checks.cooldown(BotConfig.QUESTION_COOLDOWN_RATE, BotConfig.QUESTION_COOLDOWN_PER_SECONDS)
     @app_commands.describe(question="Prompt for the model", model="Model to use (optional)")
     @app_commands.choices(model=QUESTION_MODEL_CHOICES)
@@ -53,24 +57,16 @@ class AICog(commands.Cog):
         """
         try:
             if not question.strip():
-                await interaction.response.send_message("Please enter a question.")
+                await interaction.response.send_message("Please enter a question.", ephemeral=True)
                 return
             await interaction.response.defer()
-            response = await ai_commands.generate_response(question, model)
-            if len(response) <= 2000:
-                await interaction.followup.send(response)
-            else:
-                # Split the response into chunks of 2000 characters
-                chunks = [response[i:i + 2000] for i in range(0, len(response), 2000)]
-                # Edit the original message with the first chunk
-                await interaction.edit_original_response(content=chunks[0])
-                # Send the rest of the chunks as follow-up messages
-                for chunk in chunks[1:]:
-                    await interaction.followup.send(chunk)
+            response = await ai_commands.generate_response(interaction, question, model)
+            pages = paginate_text(response, max_length=1800)
+            await send_paginated_message(interaction, pages, ephemeral=False)
         except Exception as e:
             logger.exception("Error generating AI response")
-            await send_error_followup(interaction, "generate a response")
-    
+            await send_user_message("Sorry, I couldn't generate a response. Please try again.", ctx=interaction, ephemeral=True)
+
     #endregion
 
 

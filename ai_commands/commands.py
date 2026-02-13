@@ -35,10 +35,11 @@ FALLBACK_MODELS: List[str] = [
 
 #region Commands
 
-async def generate_response(message: str, model: Optional[Any] = None) -> str:
+async def generate_response(ctx: Any, message: str, model: Optional[Any] = None) -> str:
     """Generate an AI response with model fallback and timeouts.
 
     Args:
+        ctx: Discord interaction context.
         message: Prompt to send to the model.
         model: Preferred model name (optional).
 
@@ -85,5 +86,5 @@ async def generate_response(message: str, model: Optional[Any] = None) -> str:
     # If all models fail
     error_message = f"An unexpected error occurred: {last_error}" if last_error else "All available models failed."
     return f"Could not generate response. {error_message} Please try again later."
-    
+
 #endregion

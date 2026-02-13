@@ -12,9 +12,12 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from dotenv import load_dotenv
 import discord
+from discord import app_commands
 from discord.ext import commands
 import logging
 import asyncio
+
+import music_commands
 
 #endregion
 
@@ -37,7 +40,7 @@ load_dotenv()
 _required_env_vars = {
     'DISCORD_TOKEN': 'Discord bot token',
     'GEMINI_API_KEY': 'Google Gemini API key',
-    'YOUTUBE_API_KEY': 'YouTube Data API key'
+    'YOUTUBE_API_KEY': 'YouTube Data API key',
 }
 
 _missing_vars = []
@@ -67,6 +70,13 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Remove default help command to use custom one
 bot.remove_command('help')
 
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    """Handle app command errors without noisy logs for expected check failures."""
+    if isinstance(error, app_commands.CheckFailure):
+        return
+    logger.exception("Unhandled app command error", exc_info=error)
+
 #endregion
 
 
@@ -76,9 +86,10 @@ async def load_cogs():
     """Load all cog modules."""
     cogs = [
         'cogs.general',
+        'cogs.images',
         'cogs.music',
         'cogs.ai',
-        'cogs.reminders',
+        'cogs.scheduled_events',
         'cogs.polls',
         'cogs.events'
     ]
@@ -99,7 +110,14 @@ async def main():
     """Initialize and run the bot."""
     async with bot:
         await load_cogs()
-        await bot.start(token)
+        try:
+            await bot.start(token)
+        finally:
+            try:
+                await asyncio.wait_for(music_commands.shutdown_all(), timeout=5)
+                logger.info("Music shutdown complete")
+            except asyncio.TimeoutError:
+                logger.warning("Music shutdown timed out; exiting anyway")
 
 if __name__ == "__main__":
     try:

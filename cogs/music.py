@@ -8,7 +8,7 @@ from discord.ext import commands
 import logging
 
 import music_commands
-from shared.error_helpers import send_error_followup, check_voice_channel
+from shared.error_helpers import send_user_message, check_voice_channel, guild_only
 from shared.config import BotConfig
 
 #endregion
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 #endregion
 
 
-class MusicCog(commands.Cog):
+class MusicCog(commands.GroupCog, name="music", description="Music playback"):
     """Music playback commands."""
     
     def __init__(self, bot: commands.Bot):
@@ -37,6 +37,7 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="play", description="Play a song")
     @app_commands.checks.cooldown(BotConfig.MUSIC_COOLDOWN_RATE, BotConfig.MUSIC_COOLDOWN_PER_SECONDS)
     @app_commands.describe(song="Song name or YouTube URL")
+    @guild_only()
     async def play(self, interaction: discord.Interaction, song: str = None):
         """Play a song or queue the next one.
 
@@ -50,11 +51,12 @@ class MusicCog(commands.Cog):
             await music_commands.play(interaction, song)
         except Exception as e:
             logger.exception("Error playing song")
-            await send_error_followup(interaction, "play the song")
+            await send_user_message("Sorry, I couldn't play the song. Please try again.", ctx=interaction, ephemeral=True)
     
     @app_commands.command(name="queue", description="Add a song to the playlist")
     @app_commands.checks.cooldown(BotConfig.MUSIC_COOLDOWN_RATE, BotConfig.MUSIC_COOLDOWN_PER_SECONDS)
     @app_commands.describe(song="Song name or YouTube URL")
+    @guild_only()
     async def queue(self, interaction: discord.Interaction, song: str):
         """Queue a song to the playlist.
 
@@ -67,6 +69,7 @@ class MusicCog(commands.Cog):
         await music_commands.queue_song(interaction, song)
     
     @app_commands.command(name="clear", description="Clear the playlist")
+    @guild_only()
     async def clear(self, interaction: discord.Interaction):
         """Clear the music playlist.
 
@@ -76,6 +79,7 @@ class MusicCog(commands.Cog):
         await music_commands.clear_playlist(interaction)
     
     @app_commands.command(name="playlist", description="Display the playlist")
+    @guild_only()
     async def playlist(self, interaction: discord.Interaction):
         """Display the current playlist.
 
@@ -85,6 +89,7 @@ class MusicCog(commands.Cog):
         await music_commands.display_playlist(interaction)
     
     @app_commands.command(name="pause", description="Pause the current song")
+    @guild_only()
     async def pause(self, interaction: discord.Interaction):
         """Pause the current song.
 
@@ -96,6 +101,7 @@ class MusicCog(commands.Cog):
         await music_commands.pause(interaction)
     
     @app_commands.command(name="resume", description="Resume the current song")
+    @guild_only()
     async def resume(self, interaction: discord.Interaction):
         """Resume the current song.
 
@@ -107,6 +113,7 @@ class MusicCog(commands.Cog):
         await music_commands.resume(interaction)
     
     @app_commands.command(name="skip", description="Skip the current song")
+    @guild_only()
     async def skip(self, interaction: discord.Interaction):
         """Skip the current song.
 
@@ -117,7 +124,11 @@ class MusicCog(commands.Cog):
             return
         await music_commands.skip(interaction)
     
-    @app_commands.command(name="stop", description="Stop playing music, clear the playlist, and disconnect from the voice channel")
+    @app_commands.command(
+        name="stop",
+        description="Stop playing music, clear the playlist, and disconnect from the voice channel",
+    )
+    @guild_only()
     async def stop(self, interaction: discord.Interaction):
         """Stop playback and clear the playlist.
 
@@ -130,6 +141,7 @@ class MusicCog(commands.Cog):
     
     @app_commands.command(name="swap", description="Swap two songs in the playlist")
     @app_commands.describe(index1="Number of the first song in the playlist", index2="Number of the second song in the playlist")
+    @guild_only()
     async def swap(self, interaction: discord.Interaction, index1: int, index2: int):
         """Swap two songs in the playlist by index.
 
@@ -144,6 +156,7 @@ class MusicCog(commands.Cog):
     
     @app_commands.command(name="remove", description="Remove a song from the playlist")
     @app_commands.describe(index="Number of the song to remove from the playlist")
+    @guild_only()
     async def remove(self, interaction: discord.Interaction, index: int):
         """Remove a song from the playlist by index.
 
@@ -156,6 +169,7 @@ class MusicCog(commands.Cog):
         await music_commands.remove(interaction, index)
     
     @app_commands.command(name="restart", description="Restart the current song")
+    @guild_only()
     async def restart(self, interaction: discord.Interaction):
         """Restart the current song from the beginning.
 

@@ -3,12 +3,44 @@
 #region Imports
 
 from typing import Any
+import logging
 import discord
+from discord import app_commands
 
 #endregion
 
 
 #region Functions
+
+logger = logging.getLogger(__name__)
+
+
+async def send_user_message(message: str, *, ctx: Any = None, ephemeral: bool = False) -> None:
+    """Safely send a message to an interaction or channel.
+
+    Args:
+        ctx: Discord interaction context
+        message: Message to send
+        ephemeral: Whether to send the message ephemerally
+    """
+    try:
+        if hasattr(ctx, "response") and hasattr(ctx.response, "is_done") and ctx.response.is_done():
+            await ctx.followup.send(message, ephemeral=ephemeral)
+        elif hasattr(ctx, "response"):
+            await ctx.response.send_message(message, ephemeral=ephemeral)
+        elif hasattr(ctx, "channel"):
+            await ctx.channel.send(message)
+        elif hasattr(ctx, "send"):
+            await ctx.send(message)
+    except discord.NotFound:
+        # Interaction expired; nothing to respond to.
+        logger.debug("Interaction expired before response was sent")
+    except Exception:
+        logger.exception("Failed to send interaction response")
+        if hasattr(ctx, "channel"):
+            await ctx.channel.send(message)
+        elif hasattr(ctx, "send"):
+            await ctx.send(message)
 
 
 async def check_voice_channel(ctx: discord.Interaction) -> bool:
@@ -22,42 +54,25 @@ async def check_voice_channel(ctx: discord.Interaction) -> bool:
     """
     if ctx.user.voice is None:
         message = "You must be in a voice channel to use this command."
-        try:
-            if hasattr(ctx, "response") and hasattr(ctx.response, "is_done") and ctx.response.is_done():
-                await ctx.followup.send(message)
-            else:
-                await ctx.response.send_message(message)
-        except Exception:
-            await ctx.channel.send(message)
+        await send_user_message(message, ctx=ctx, ephemeral=True)
         return False
     return True
 
 
-async def send_error_followup(ctx: Any, action: str) -> None:
-    """Send a consistent error message for a failed action.
+def guild_only():
+    """Ensure a slash command runs in a guild, not DMs."""
 
-    Args:
-        ctx: Discord interaction context
-        action: Action description (e.g., "play the song")
-    """
-    message = f"Sorry, I couldn't {action}. Please try again."
-    try:
-        if hasattr(ctx, "response") and hasattr(ctx.response, "is_done") and ctx.response.is_done():
-            await ctx.followup.send(message)
-        else:
-            await ctx.response.send_message(message)
-    except Exception:
-        # Fallback if response already sent or unavailable
-        await ctx.channel.send(message)
+    async def predicate(interaction: discord.Interaction) -> bool:
+        if interaction.guild is None:
+            await send_user_message(
+                "This command can only be used in a server.",
+                ctx=interaction,
+                ephemeral=True,
+            )
+            return False
+        return True
 
+    return app_commands.check(predicate)
 
-async def send_error_message(channel: Any, action: str) -> None:
-    """Send a consistent error message to a channel.
-
-    Args:
-        channel: Discord channel
-        action: Action description (e.g., "process that message")
-    """
-    await channel.send(f"Sorry, I couldn't {action}. Please try again.")
 
 #endregion

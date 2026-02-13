@@ -8,10 +8,10 @@ import logging
 
 import message_commands
 import music_commands
-import reminder_commands
-from music_commands import state as music_state
+import scheduled_event_commands
+from music_commands.state import list_guild_states
 from music_commands.helpers import _cleanup_audio_file
-from shared.error_helpers import send_error_message
+from shared.error_helpers import send_user_message
 
 #endregion
 
@@ -41,16 +41,17 @@ class EventsCog(commands.Cog):
         """Handle bot ready event and start background tasks."""
         try:
             logger.info("Syncing slash commands...")
-            await self.bot.tree.sync()
-            logger.info("Slash commands synced")
+            synced = await self.bot.tree.sync()
+            logger.info(f"Synced {len(synced)} commands globally")
         except Exception:
             logger.exception("Failed to sync slash commands")
         
         print(f"Logged in as \"{self.bot.user.name}\"")
         print(f"ID: {self.bot.user.id}")
         print('------')
-        
-        self.bot.loop.create_task(reminder_commands.handle_reminders(self.bot))
+
+        scheduled_event_commands.initialize_storage()
+        self.bot.loop.create_task(scheduled_event_commands.handle_scheduled_events(self.bot))
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -70,16 +71,17 @@ class EventsCog(commands.Cog):
             await message_commands.process_message(self.bot, message)
         except Exception as e:
             logger.exception("Error processing message")
-            await send_error_message(message.channel, "process that message")
+            await send_user_message("Sorry, I couldn't process that message. Please try again.", ctx=message)
     
     @commands.Cog.listener()
     async def on_disconnect(self):
         """Handle bot disconnect event and cleanup state."""
-        music_state.reset()
         try:
-            await _cleanup_audio_file(music_state.filename)
+            for guild_state in list_guild_states():
+                await _cleanup_audio_file(guild_state.filename)
+                guild_state.reset()
         except Exception:
-            logger.exception("Error cleaning up audio file on disconnect")
+            logger.exception("Error cleaning up audio files on disconnect")
     
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):

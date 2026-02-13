@@ -23,6 +23,8 @@ class BotConfig:
         QUESTION_COOLDOWN_PER_SECONDS: Question cooldown window in seconds.
         MUSIC_COOLDOWN_RATE: Max music requests per window.
         MUSIC_COOLDOWN_PER_SECONDS: Music cooldown window in seconds.
+        SCHEDULED_EVENT_COOLDOWN_RATE: Max scheduled event creates per window.
+        SCHEDULED_EVENT_COOLDOWN_PER_SECONDS: Scheduled event cooldown window in seconds.
     """
 
     # Timeouts (seconds)
@@ -36,5 +38,7 @@ class BotConfig:
     QUESTION_COOLDOWN_PER_SECONDS: int = 15
     MUSIC_COOLDOWN_RATE: int = 2
     MUSIC_COOLDOWN_PER_SECONDS: int = 10
+    SCHEDULED_EVENT_COOLDOWN_RATE: int = 1
+    SCHEDULED_EVENT_COOLDOWN_PER_SECONDS: int = 20
 
 #endregion

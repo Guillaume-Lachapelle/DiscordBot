@@ -27,7 +27,6 @@ async def _cleanup_audio_file(file_path):
     """
     try:
         if file_path and os.path.exists(file_path):
-            await asyncio.sleep(1)
             os.remove(file_path)
             logger.info("Cleaned up audio file: %s", file_path)
     except FileNotFoundError:

@@ -1,13 +1,13 @@
 # DiscordBot - Experimenting with Python and APIs
 
-This is a Discord bot built with Python and discord.py. It provides slash commands and message-based features for music, reminders, AI responses, stock lookup, polls, and image background removal.
+This is a Discord bot built with Python and discord.py. It provides slash commands and message-based features for music, scheduled events, AI responses, stock lookup, polls, and image background removal.
 
 ## Features
 
 - **Music Playback**: YouTube audio streaming with queue management (play, queue, pause, resume, skip, stop, swap, remove, restart)
-- **Reminders**: Schedule notifications with date/time, list active reminders, modify or delete them
+- **Scheduled Events**: Schedule server events with date/time, list active events, modify or delete them
 - **AI Responses**: Ask questions using Google Gemini with model fallback support
-- **Polls**: Create polls with up to 10 options and reaction-based voting
+- **Polls**: Create polls with up to 10 options and Discord native poll voting
 - **Image Processing**: Remove backgrounds from images using rembg
 
 ## Architecture
@@ -75,33 +75,33 @@ To have the bot automatically start when Windows boots (even when locked):
 - /ping
 
 ### AI
-- /question
+- /ai question
 
 ### Music
-- /play
-- /queue
-- /clear
-- /playlist
-- /pause
-- /resume
-- /skip
-- /stop
-- /swap
-- /remove
-- /restart
+- /music play
+- /music queue
+- /music clear
+- /music playlist
+- /music pause
+- /music resume
+- /music skip
+- /music stop
+- /music swap
+- /music remove
+- /music restart
 
-### Reminders
-- /set-reminder
-- /list-reminders
-- /modify-reminder
-- /delete-reminder
-- /delete-all-reminders
+### Scheduled Events
+- /events set
+- /events list
+- /events modify
+- /events delete
+- /events delete-all
 
 ### Polls
-- /poll
+- /polls create
 
 ### Images
-- !rembg (message command with an image attachment)
+- /images remove-background (slash command with an image attachment)
 
 ## Notes
 
