@@ -27,6 +27,7 @@ class ScheduledEventCreateModal(discord.ui.Modal):
 
     def __init__(self):
         super().__init__(title="Create scheduled event")
+        now = datetime.datetime.now()
         self.title_input = discord.ui.TextInput(
             label="Title",
             placeholder="Event title",
@@ -34,7 +35,7 @@ class ScheduledEventCreateModal(discord.ui.Modal):
         )
         self.date_input = discord.ui.TextInput(
             label="Date (YYYY-MM-DD)",
-            placeholder="2026-02-10",
+            placeholder=now.strftime("%Y-%m-%d"),
             max_length=10,
         )
         self.time_input = discord.ui.TextInput(
